@@ -1,0 +1,86 @@
+[
+  {
+    "raw_name": "NeurIPS",
+    "raw_edition_or_year": "2026",
+    "raw_topics": [
+      "Machine Learning",
+      "Neural Information Processing",
+      "Computer Vision",
+      "Reinforcement Learning"
+    ],
+    "raw_submission_deadline": "May 21 2026 (Anywhere on Earth)",
+    "raw_start_date": "Dec 06 2026",
+    "raw_end_date": "Dec 12 2026",
+    "raw_location": "San Diego, CA, USA",
+    "raw_format": "In-Person",
+    "raw_publisher": "Curran Associates / NeurIPS Proceedings",
+    "raw_organizer": "Neural Information Processing Systems Foundation",
+    "raw_fees": "$850 Regular / $350 Student",
+    "raw_official_website": "https://neurips.cc",
+    "extra_metadata": {
+      "title": "Thirty-Eighth Annual Conference on Neural Information Processing Systems"
+    }
+  },
+  {
+    "raw_name": "ACL",
+    "raw_edition_or_year": "2025",
+    "raw_topics": [
+      "Natural Language Processing",
+      "Computational Linguistics",
+      "Information Extraction",
+      "Dialogue Systems"
+    ],
+    "raw_submission_deadline": "February 15, 2025",
+    "raw_start_date": "August 3, 2025",
+    "raw_end_date": "August 8, 2025",
+    "raw_location": "Vienna, Austria",
+    "raw_format": "Hybrid",
+    "raw_publisher": "Association for Computational Linguistics (ACL)",
+    "raw_organizer": "ACL",
+    "raw_fees": "$700 Academic",
+    "raw_official_website": "https://2025.aclweb.org",
+    "extra_metadata": {
+      "title": "63rd Annual Meeting of the Association for Computational Linguistics"
+    }
+  },
+  {
+    "raw_name": "CVPR",
+    "raw_edition_or_year": "2026",
+    "raw_topics": [
+      "Computer Vision",
+      "Pattern Recognition",
+      "3D Reconstruction",
+      "Generative Models"
+    ],
+    "raw_submission_deadline": "November 14, 2025",
+    "raw_start_date": "June 18, 2026",
+    "raw_end_date": "June 23, 2026",
+    "raw_location": "Seattle, WA, USA",
+    "raw_format": "In-Person",
+    "raw_publisher": "IEEE / Computer Vision Foundation (CVF)",
+    "raw_organizer": "IEEE Computer Society",
+    "raw_fees": "$900 Regular",
+    "raw_official_website": "https://cvpr.thecvf.com",
+    "extra_metadata": {
+      "title": "IEEE / CVF Computer Vision and Pattern Recognition Conference 2026"
+    }
+  },
+  {
+    "raw_name": "Emerging AI Workshop",
+    "raw_edition_or_year": "2026",
+    "raw_topics": [
+      "Responsible AI"
+    ],
+    "raw_submission_deadline": null,
+    "raw_start_date": "October 10, 2026",
+    "raw_end_date": null,
+    "raw_location": null,
+    "raw_format": "Virtual",
+    "raw_publisher": null,
+    "raw_organizer": "Independent Working Group",
+    "raw_fees": "Free",
+    "raw_official_website": null,
+    "extra_metadata": {}
+  }
+]
+

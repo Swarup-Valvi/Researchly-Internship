@@ -1,0 +1,69 @@
+[
+  {
+    "conference_id": "neurips-2026",
+    "category": "program_committee",
+    "claim": "Program chairs and committee verified via NeurIPS foundation registry",
+    "is_self_claimed": false,
+    "source_name": "neurips_foundation",
+    "source_url": "https://neurips.cc/Conferences/2026/Committees",
+    "retrieved_at": "2026-10-30T00:00:00Z",
+    "supporting_excerpt": "Program Co-Chairs: Verified academic researchers from top tier universities.",
+    "verification_status": "Verified"
+  },
+  {
+    "conference_id": "neurips-2026",
+    "category": "indexing_claims",
+    "claim": "Proceedings indexed in DBLP and Google Scholar",
+    "is_self_claimed": false,
+    "source_name": "dblp_computer_science_bibliography",
+    "source_url": "https://dblp.org/db/conf/nips/index.html",
+    "retrieved_at": "2026-10-30T00:00:00Z",
+    "supporting_excerpt": "Conference track record verified from 1987 to present.",
+    "verification_status": "Verified"
+  },
+  {
+    "conference_id": "predatory-ai-summit-2026",
+    "category": "domain_and_website",
+    "claim": "Conference operates under cloned domain mimicking legitimate conference",
+    "is_self_claimed": false,
+    "source_name": "academic_security_blacklist",
+    "source_url": "https://security.example.org/domain-alerts",
+    "retrieved_at": "2026-10-30T00:00:00Z",
+    "supporting_excerpt": "Domain was registered 2 weeks ago; mirrors styling of ICML without authorization.",
+    "verification_status": "Contradicted"
+  },
+  {
+    "conference_id": "predatory-ai-summit-2026",
+    "category": "indexing_claims",
+    "claim": "Conference claims Scopus and Web of Science indexation",
+    "is_self_claimed": true,
+    "source_name": "scopus_official_title_list",
+    "source_url": "https://www.scopus.com/sources",
+    "retrieved_at": "2026-10-30T00:00:00Z",
+    "supporting_excerpt": "Official Elsevier Scopus title list confirms publication is not indexed.",
+    "verification_status": "Contradicted"
+  },
+  {
+    "conference_id": "predatory-ai-summit-2026",
+    "category": "publisher_and_proceedings",
+    "claim": "Claims IEEE publication agreement",
+    "is_self_claimed": true,
+    "source_name": "ieee_conference_search",
+    "source_url": "https://www.ieee.org/conferences/index.html",
+    "retrieved_at": "2026-10-30T00:00:00Z",
+    "supporting_excerpt": "IEEE explicitly disavows association and has issued a cease-and-desist.",
+    "verification_status": "Contradicted"
+  },
+  {
+    "conference_id": "predatory-ai-summit-2026",
+    "category": "program_committee",
+    "claim": "Lists prominent researchers as keynote speakers without consent",
+    "is_self_claimed": true,
+    "source_name": "faculty_public_statement",
+    "source_url": "https://cs.stanford.edu/news/disclaimer",
+    "retrieved_at": "2026-10-30T00:00:00Z",
+    "supporting_excerpt": "Professor confirms they never agreed to speak or review for this summit.",
+    "verification_status": "Contradicted"
+  }
+]
+
