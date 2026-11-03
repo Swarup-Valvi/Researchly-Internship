@@ -19,11 +19,14 @@ from researchly.adapters.official_site_adapter import OfficialSiteAdapter
 
 def test_discovery_overhaul():
     print("=" * 75)
-    print("  RESEARCHLY.IO — DISCOVERY ENGINE OVERHAUL TEST SUITE")
+    print("  RESEARCHLY.IO - DISCOVERY ENGINE OVERHAUL TEST SUITE")
     print("=" * 75)
 
-    with tempfile.NamedTemporaryFile(suffix=".db") as tmp:
-        db_path = tmp.name
+    tmp_file = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+    db_path = tmp_file.name
+    tmp_file.close()
+
+    try:
         repo = SQLiteConferenceRepository(db_path=db_path)
 
         adapters = [
@@ -64,7 +67,7 @@ def test_discovery_overhaul():
         stats2, reports2 = pipeline.run()
         print(f"Run 2 - Inserted: {stats2.inserted}, Duplicates Skipped: {stats2.duplicates_skipped}")
         assert stats2.inserted == 0, "Idempotency violated: fresh run inserted records that already exist!"
-        print("✓ Idempotency verified: zero duplicate editions inserted on rerun.")
+        print("[OK] Idempotency verified: zero duplicate editions inserted on rerun.")
 
         # [3] Verify Stored Records, Event Types, and Paper Submission Opportunity Filtering
         all_records = repo.list_all()
@@ -78,39 +81,46 @@ def test_discovery_overhaul():
 
         print("\nBreakdown by Event Type:")
         for et, count in event_types.items():
-            print(f"  • {et:<15}: {count}")
+            print(f"  * {et:<15}: {count}")
 
         print("\nBreakdown by Paper Opportunity Status:")
         for st, count in opp_statuses.items():
-            print(f"  • {st:<15}: {count}")
+            print(f"  * {st:<15}: {count}")
 
         # [4] Test Database Multi-Dimensional Filtering Queries
         print("\n[4] Testing Database Multi-Dimensional Filtering...")
         
         # Filter workshops only
         workshops = repo.list_all(event_type="workshop")
-        print(f"  • Filter 'workshop': {len(workshops)} found")
+        print(f"  * Filter 'workshop': {len(workshops)} found")
         for w in workshops[:3]:
             print(f"      - {w.id} ({w.name}): {w.title or 'No title'}")
 
         # Filter paper submission opportunities (has_paper_submission=True)
         paper_opps = repo.list_all(has_paper_submission=True)
-        print(f"  • Filter 'has_paper_submission=True': {len(paper_opps)} found")
+        print(f"  * Filter 'has_paper_submission=True': {len(paper_opps)} found")
 
         # Filter upcoming conferences
         upcoming = repo.list_all(status="Upcoming")
-        print(f"  • Filter 'status=Upcoming': {len(upcoming)} found")
+        print(f"  * Filter 'status=Upcoming': {len(upcoming)} found")
 
         # [5] Sample Discovered Records Inspection
         print("\n[5] Detailed Record Samples:")
         for r in all_records[:8]:
-            opp_icon = "📄 CFP" if r.has_paper_submission else "🚫 Attendance-only"
+            opp_icon = "[CFP]" if r.has_paper_submission else "[Attendance-only]"
             dl_str = r.submission_deadline or "None"
             print(f"  [{r.id:<28}] Type: {r.event_type:<10} | {opp_icon:<16} | Status: {r.status:<26} | DL: {dl_str}")
 
         print("\n" + "=" * 75)
-        print("  ✅ DISCOVERY ENGINE OVERHAUL TEST SUITE PASSED")
+        print("  [SUCCESS] DISCOVERY ENGINE OVERHAUL TEST SUITE PASSED")
         print("=" * 75 + "\n")
+    finally:
+        import gc
+        gc.collect()
+        try:
+            os.remove(db_path)
+        except OSError:
+            pass
 
 
 if __name__ == "__main__":

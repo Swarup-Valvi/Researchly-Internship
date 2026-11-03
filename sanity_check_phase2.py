@@ -188,10 +188,13 @@ def run_phase2_sanity_checks():
         print("\nAll Phase 2 sanity checks PASSED successfully!")
 
     finally:
-        if os.path.exists(temp_db_path):
-            os.remove(temp_db_path)
-
-
+        try:
+            import gc
+            gc.collect()
+            if os.path.exists(temp_db_path):
+                os.remove(temp_db_path)
+        except Exception:
+            pass
 if __name__ == "__main__":
     run_phase2_sanity_checks()
 

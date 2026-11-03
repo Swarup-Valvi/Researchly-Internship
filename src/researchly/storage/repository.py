@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from datetime import datetime, timezone
 from abc import ABC, abstractmethod
 from typing import Optional, List, Tuple
 from dataclasses import dataclass
@@ -92,6 +93,48 @@ class ConferenceRepository(ABC):
     @abstractmethod
     def get_assessment_history(self, conference_id: str) -> List[CredibilityAssessment]:
         """Returns all historical assessments for a conference."""
+        pass
+
+    # User Application Tracking methods
+    @abstractmethod
+    def create_application(
+        self,
+        user_id: str,
+        conference_id: str,
+        status: str = "Interested",
+        notes: Optional[str] = None,
+        submitted_at: Optional[str] = None,
+        decision_at: Optional[str] = None,
+    ) -> dict:
+        """Create a new conference tracking record for the user."""
+        pass
+
+    @abstractmethod
+    def get_application(self, user_id: str, conference_id: str) -> Optional[dict]:
+        """Retrieve tracking record for a specific conference and user."""
+        pass
+
+    @abstractmethod
+    def list_applications(self, user_id: str, status: Optional[str] = None) -> List[dict]:
+        """List all tracked applications for a user, optionally filtered by status."""
+        pass
+
+    @abstractmethod
+    def update_application(
+        self,
+        user_id: str,
+        conference_id: str,
+        status: Optional[str] = None,
+        notes: Optional[str] = None,
+        submitted_at: Optional[str] = None,
+        decision_at: Optional[str] = None,
+    ) -> Optional[dict]:
+        """Update status, dates, or notes for a user's tracked conference."""
+        pass
+
+    @abstractmethod
+    def delete_application(self, user_id: str, conference_id: str) -> bool:
+        """Remove a tracked conference for a user."""
         pass
 
 
@@ -230,6 +273,59 @@ class SQLiteConferenceRepository(ConferenceRepository):
                     FOREIGN KEY (conference_id) REFERENCES conferences(id)
                 );
             """)
+
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS user_applications (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id TEXT NOT NULL DEFAULT 'default_user',
+                    conference_id TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'Interested',
+                    notes TEXT,
+                    added_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    submitted_at TEXT,
+                    decision_at TEXT,
+                    UNIQUE(user_id, conference_id),
+                    FOREIGN KEY (conference_id) REFERENCES conferences(id)
+                );
+            """)
+
+            # Migration: Ensure user_id column exists for existing DBs
+            cursor.execute("PRAGMA table_info(user_applications);")
+            app_cols = [c[1] for c in cursor.fetchall()]
+            if app_cols and "user_id" not in app_cols:
+                cursor.execute("ALTER TABLE user_applications ADD COLUMN user_id TEXT NOT NULL DEFAULT 'default_user';")
+
+            # Migration: Ensure table has composite UNIQUE(user_id, conference_id) rather than old column-level UNIQUE
+            cursor.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='user_applications';")
+            row = cursor.fetchone()
+            if row and row[0]:
+                ddl = row[0].replace(" ", "").replace("\n", "").lower()
+                if "unique(user_id,conference_id)" not in ddl:
+                    cursor.execute("""
+                        CREATE TABLE user_applications_migrated (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            user_id TEXT NOT NULL DEFAULT 'default_user',
+                            conference_id TEXT NOT NULL,
+                            status TEXT NOT NULL DEFAULT 'Interested',
+                            notes TEXT,
+                            added_at TEXT NOT NULL,
+                            updated_at TEXT NOT NULL,
+                            submitted_at TEXT,
+                            decision_at TEXT,
+                            UNIQUE(user_id, conference_id),
+                            FOREIGN KEY (conference_id) REFERENCES conferences(id)
+                        );
+                    """)
+                    cursor.execute("""
+                        INSERT OR IGNORE INTO user_applications_migrated
+                            (id, user_id, conference_id, status, notes, added_at, updated_at, submitted_at, decision_at)
+                        SELECT id, COALESCE(user_id, 'default_user'), conference_id, status, notes, added_at, updated_at, submitted_at, decision_at
+                        FROM user_applications;
+                    """)
+                    cursor.execute("DROP TABLE user_applications;")
+                    cursor.execute("ALTER TABLE user_applications_migrated RENAME TO user_applications;")
+
             conn.commit()
 
     def _row_to_model(self, row: sqlite3.Row) -> NormalizedConference:
@@ -667,3 +763,99 @@ class SQLiteConferenceRepository(ConferenceRepository):
             """, (conference_id,))
             rows = cur.fetchall()
             return [self._row_to_assessment(r) for r in rows]
+
+    # -----------------------------------------------------------------------
+    # User Application Tracking Methods
+    # -----------------------------------------------------------------------
+
+    def create_application(
+        self,
+        user_id: str,
+        conference_id: str,
+        status: str = "Interested",
+        notes: Optional[str] = None,
+        submitted_at: Optional[str] = None,
+        decision_at: Optional[str] = None,
+    ) -> dict:
+        now = datetime.now(timezone.utc).isoformat()
+        with self._get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("""
+                INSERT INTO user_applications
+                    (user_id, conference_id, status, notes, added_at, updated_at, submitted_at, decision_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (user_id, conference_id, status, notes, now, now, submitted_at, decision_at))
+            conn.commit()
+        app = self.get_application(user_id, conference_id)
+        if not app:
+            raise RuntimeError("Failed to retrieve created application")
+        return app
+
+    def get_application(self, user_id: str, conference_id: str) -> Optional[dict]:
+        with self._get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT * FROM user_applications WHERE user_id = ? AND conference_id = ?
+            """, (user_id, conference_id))
+            row = cur.fetchone()
+            if row:
+                return dict(row)
+            return None
+
+    def list_applications(self, user_id: str, status: Optional[str] = None) -> List[dict]:
+        with self._get_connection() as conn:
+            cur = conn.cursor()
+            if status:
+                cur.execute("""
+                    SELECT * FROM user_applications
+                    WHERE user_id = ? AND status = ?
+                    ORDER BY updated_at DESC
+                """, (user_id, status))
+            else:
+                cur.execute("""
+                    SELECT * FROM user_applications
+                    WHERE user_id = ?
+                    ORDER BY updated_at DESC
+                """, (user_id,))
+            return [dict(r) for r in cur.fetchall()]
+
+    def update_application(
+        self,
+        user_id: str,
+        conference_id: str,
+        status: Optional[str] = None,
+        notes: Optional[str] = None,
+        submitted_at: Optional[str] = None,
+        decision_at: Optional[str] = None,
+    ) -> Optional[dict]:
+        existing = self.get_application(user_id, conference_id)
+        if not existing:
+            return None
+
+        now = datetime.now(timezone.utc).isoformat()
+        fields: dict = {"updated_at": now}
+        if status is not None:
+            fields["status"] = status
+        if notes is not None:
+            fields["notes"] = notes
+        if submitted_at is not None:
+            fields["submitted_at"] = submitted_at
+        if decision_at is not None:
+            fields["decision_at"] = decision_at
+
+        set_clause = ", ".join(f"{k} = ?" for k in fields)
+        values = list(fields.values()) + [user_id, conference_id]
+
+        with self._get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute(f"UPDATE user_applications SET {set_clause} WHERE user_id = ? AND conference_id = ?", values)
+            conn.commit()
+
+        return self.get_application(user_id, conference_id)
+
+    def delete_application(self, user_id: str, conference_id: str) -> bool:
+        with self._get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("DELETE FROM user_applications WHERE user_id = ? AND conference_id = ?", (user_id, conference_id))
+            conn.commit()
+            return cur.rowcount > 0

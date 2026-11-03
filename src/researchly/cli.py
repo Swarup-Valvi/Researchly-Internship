@@ -52,7 +52,7 @@ def print_summary(stats, source_reports: List[SourceRunReport], repo: SQLiteConf
     print("\nPer-Source Execution Telemetry:")
     print("-" * 65)
     for sr in source_reports:
-        status_sym = "✓ SUCCESS" if sr.success else "✗ FAILED"
+        status_sym = "[SUCCESS]" if sr.success else "[FAILED]"
         print(f"  [{sr.source_name:<22}] {status_sym}")
         print(f"    Discovered: {sr.records_discovered:<3} | Inserted: {sr.records_inserted:<3} | Updated: {sr.records_updated:<3} | Skipped: {sr.duplicates_skipped:<3} | DL Shifts: {sr.deadline_changes}")
         if sr.error_message:
@@ -66,14 +66,14 @@ def print_summary(stats, source_reports: List[SourceRunReport], repo: SQLiteConf
     for conf in all_confs:
         dl_str = conf.submission_deadline or "None"
         type_str = f"[{conf.event_type.upper()}]"
-        opp_str = "📄 CFP" if conf.has_paper_submission else "🚫 Attendance-only"
-        print(f"  • {conf.id:<32} | {type_str:<12} | {opp_str:<17} | DL: {dl_str:<10} | Loc: {conf.location or 'TBD'}")
+        opp_str = "[CFP]" if conf.has_paper_submission else "[Attendance-only]"
+        print(f"  * {conf.id:<32} | {type_str:<12} | {opp_str:<17} | DL: {dl_str:<10} | Loc: {conf.location or 'TBD'}")
 
     history = repo.get_deadline_history()
     if history:
         print(f"\nDeadline Change Audit Log ({len(history)} events):")
         for h in history:
-            print(f"  • [{h.detected_at[:19]}] {h.conference_id}: {h.previous_deadline} -> {h.new_deadline} (via {h.source_name})")
+            print(f"  * [{h.detected_at[:19]}] {h.conference_id}: {h.previous_deadline} -> {h.new_deadline} (via {h.source_name})")
     print("=" * 65 + "\n")
 
 

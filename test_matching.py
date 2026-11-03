@@ -2,6 +2,7 @@
 
 import sys
 import os
+if hasattr(sys.stdout, 'reconfigure'): sys.stdout.reconfigure(encoding='utf-8')
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 
 from datetime import date
@@ -72,7 +73,7 @@ def main():
             if rec.location:
                 loc = rec.location
                 if rec.location_match:
-                    loc += "  ✓ match"
+                    loc += "  [OK] match"
                 print(f"      Location:     {loc}")
             print(f"      Credibility:  {rec.credibility.risk_level}")
             if rec.topic_overlap.matched_conference_topics:
@@ -103,20 +104,20 @@ def main():
     )
     cv_conf_ids = [r.conference_id for r in all_recs if "cvpr" in r.conference_id.lower()]
     assert len(cv_conf_ids) > 0, "CVPR should match a computer vision paper"
-    print(f"\n✓ CVPR found in results (expected for a CV paper)")
+    print(f"\n[OK] CVPR found in results (expected for a CV paper)")
 
     # Verify no completed conference is presented without disclaimer
     for rec in result.historical_completed:
         assert "concluded" in rec.match_explanation.lower() or "reference" in rec.match_explanation.lower(), \
             f"Completed conference {rec.conference_id} must be flagged as historical"
-    print("✓ Historical conferences properly flagged")
+    print("[OK] Historical conferences properly flagged")
 
     # Verify credibility data is present
     for rec in all_recs:
         assert rec.credibility is not None, f"Missing credibility for {rec.conference_id}"
-    print("✓ Credibility summaries attached to all recommendations")
+    print("[OK] Credibility summaries attached to all recommendations")
 
-    print("\n✅ Phase 3 smoke test PASSED\n")
+    print("\n[SUCCESS] Phase 3 smoke test PASSED\n")
 
 
 if __name__ == "__main__":

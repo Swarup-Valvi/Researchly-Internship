@@ -1,0 +1,36 @@
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+*.db-journal
+
+# Node
+node_modules/
+dist/
+dist-ssr/
+*.local
+.pnpm-debug.log*
+
+# IDE / OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
