@@ -61,6 +61,7 @@ class ConferenceRepository(ABC):
         format_type: Optional[str] = None,
         min_deadline: Optional[str] = None,
         max_deadline: Optional[str] = None,
+        academic_level: Optional[str] = None,
     ) -> List[NormalizedConference]:
         pass
 
@@ -138,7 +139,9 @@ class SQLiteConferenceRepository(ConferenceRepository):
                     event_type TEXT,
                     paper_opportunity_status TEXT,
                     has_paper_submission INTEGER DEFAULT 1,
-                    submission_url TEXT
+                    submission_url TEXT,
+                    academic_level TEXT DEFAULT 'professional',
+                    extracted_by_llm TEXT
                 );
             """)
 
@@ -153,6 +156,8 @@ class SQLiteConferenceRepository(ConferenceRepository):
                 ("paper_opportunity_status", "TEXT"),
                 ("has_paper_submission", "INTEGER DEFAULT 1"),
                 ("submission_url", "TEXT"),
+                ("academic_level", "TEXT DEFAULT 'professional'"),
+                ("extracted_by_llm", "TEXT"),
             ]:
                 if col not in columns:
                     cursor.execute(f"ALTER TABLE conferences ADD COLUMN {col} {col_type};")
@@ -260,6 +265,8 @@ class SQLiteConferenceRepository(ConferenceRepository):
             submission_status=row["submission_status"] if "submission_status" in keys and row["submission_status"] else "Deadline unknown",
             event_type=row["event_type"] if "event_type" in keys and row["event_type"] else "conference",
             paper_opportunity_status=row["paper_opportunity_status"] if "paper_opportunity_status" in keys and row["paper_opportunity_status"] else "unverified",
+            academic_level=row["academic_level"] if "academic_level" in keys and row["academic_level"] else "unknown",
+            extracted_by_llm=row["extracted_by_llm"] if "extracted_by_llm" in keys else None,
             has_paper_submission=bool(row["has_paper_submission"]) if "has_paper_submission" in keys and row["has_paper_submission"] is not None else True,
             submission_url=row["submission_url"] if "submission_url" in keys else None,
         )
@@ -289,8 +296,9 @@ class SQLiteConferenceRepository(ConferenceRepository):
                         official_website_url, source_name, source_url,
                         first_discovered_at, last_checked_at, warnings,
                         status, event_status, submission_status, event_type,
-                        paper_opportunity_status, has_paper_submission, submission_url
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        paper_opportunity_status, has_paper_submission, submission_url,
+                        academic_level, extracted_by_llm
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     conf.id, conf.name, conf.edition_or_year, conf.title,
                     json.dumps(conf.topics), conf.submission_deadline,
@@ -301,7 +309,9 @@ class SQLiteConferenceRepository(ConferenceRepository):
                     json.dumps(conf.warnings),
                     conf.status, conf.event_status, conf.submission_status, conf.event_type,
                     conf.paper_opportunity_status,
-                    1 if conf.has_paper_submission else 0, conf.submission_url
+                    1 if conf.has_paper_submission else 0, conf.submission_url,
+                    getattr(conf, "academic_level", "professional"),
+                    getattr(conf, "extracted_by_llm", None)
                 ))
                 conn.commit()
                 return "inserted", None
@@ -369,6 +379,14 @@ class SQLiteConferenceRepository(ConferenceRepository):
             merged_opp_status = conf.paper_opportunity_status if conf.paper_opportunity_status != "unverified" else existing.paper_opportunity_status
             merged_has_paper_sub = conf.has_paper_submission if conf.has_paper_submission is not None else existing.has_paper_submission
             merged_sub_url = conf.submission_url if conf.submission_url is not None else existing.submission_url
+            incoming_level = getattr(conf, "academic_level", None)
+            existing_level = getattr(existing, "academic_level", None)
+            # Unknown or empty AI/scrape values must not wipe a level already on record.
+            if incoming_level in (None, "", "unknown"):
+                merged_academic_level = existing_level or "unknown"
+            else:
+                merged_academic_level = incoming_level
+            merged_extracted_by_llm = getattr(conf, "extracted_by_llm", None) or getattr(existing, "extracted_by_llm", None)
             
             # Provenance: if the conference data actually changed, update source provenance
             first_discovered = existing.first_discovered_at
@@ -397,7 +415,9 @@ class SQLiteConferenceRepository(ConferenceRepository):
                 existing.event_type != merged_event_type or
                 existing.paper_opportunity_status != merged_opp_status or
                 existing.has_paper_submission != merged_has_paper_sub or
-                existing.submission_url != merged_sub_url
+                existing.submission_url != merged_sub_url or
+                getattr(existing, "academic_level", None) != merged_academic_level or
+                getattr(existing, "extracted_by_llm", None) != merged_extracted_by_llm
             )
 
             # Only update source_name and source_url if there was a substantive update
@@ -418,7 +438,8 @@ class SQLiteConferenceRepository(ConferenceRepository):
                     official_website_url = ?, source_name = ?, source_url = ?,
                     first_discovered_at = ?, last_checked_at = ?, warnings = ?,
                     status = ?, event_status = ?, submission_status = ?, event_type = ?,
-                    paper_opportunity_status = ?, has_paper_submission = ?, submission_url = ?
+                    paper_opportunity_status = ?, has_paper_submission = ?, submission_url = ?,
+                    academic_level = ?, extracted_by_llm = ?
                 WHERE id = ?
             """, (
                 merged_name, merged_edition, merged_title, json.dumps(merged_topics),
@@ -429,6 +450,7 @@ class SQLiteConferenceRepository(ConferenceRepository):
                 first_discovered, conf.last_checked_at, json.dumps(merged_warnings),
                 merged_status, merged_event_status, merged_submission_status, merged_event_type,
                 merged_opp_status, 1 if merged_has_paper_sub else 0, merged_sub_url,
+                merged_academic_level, merged_extracted_by_llm,
                 conf.id
             ))
             conn.commit()
@@ -452,6 +474,7 @@ class SQLiteConferenceRepository(ConferenceRepository):
         format_type: Optional[str] = None,
         min_deadline: Optional[str] = None,
         max_deadline: Optional[str] = None,
+        academic_level: Optional[str] = None,
     ) -> List[NormalizedConference]:
         with self._get_connection() as conn:
             cur = conn.cursor()
@@ -460,6 +483,10 @@ class SQLiteConferenceRepository(ConferenceRepository):
 
             if not include_historical:
                 query += " AND (event_status IS NULL OR event_status != 'Completed') AND (status IS NULL OR status NOT LIKE '%Completed%')"
+
+            if academic_level:
+                query += " AND academic_level = ?"
+                params.append(academic_level.lower())
 
             if event_type:
                 query += " AND event_type = ?"

@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import List
 
 from researchly.storage.repository import SQLiteConferenceRepository
+from researchly.storage.raw_store import RawCollectionStore
 from researchly.adapters.base import SourceAdapter
 from researchly.adapters.fixture_adapter import FixtureAdapter
 from researchly.adapters.icml_adapter import ICMLOfficialAdapter
@@ -21,6 +22,11 @@ from researchly.adapters.society_adapter import SocietyDirectoryAdapter
 from researchly.adapters.dblp_adapter import DBLPMetadataAdapter
 from researchly.adapters.generic_event_adapter import GenericEventAdapter
 from researchly.adapters.public_cfp_feed import PublicCFPFeedAdapter
+from researchly.adapters.broad_cfp_adapter import (
+    ConferenceAlertsAdapter,
+    WikiCFPBroadAdapter,
+    COREConferencePortalAdapter,
+)
 from researchly.core.pipeline import IngestionPipeline, SourceRunReport
 from researchly.credibility.service import CredibilityService
 from researchly.credibility.models import EvidenceItem, EvidenceCategory, VerificationStatus
@@ -37,7 +43,7 @@ def configure_logging(verbose: bool = False):
     )
 
 
-def print_summary(stats, source_reports: List[SourceRunReport], repo: SQLiteConferenceRepository):
+def print_summary(stats, source_reports: List[SourceRunReport], repo: SQLiteConferenceRepository, raw_store=None):
     print("\n" + "=" * 65)
     print("        RESEARCHLY.IO INGESTION RUN SUMMARY")
     print("=" * 65)
@@ -74,6 +80,14 @@ def print_summary(stats, source_reports: List[SourceRunReport], repo: SQLiteConf
         print(f"\nDeadline Change Audit Log ({len(history)} events):")
         for h in history:
             print(f"  • [{h.detected_at[:19]}] {h.conference_id}: {h.previous_deadline} -> {h.new_deadline} (via {h.source_name})")
+
+    # Raw scrape cache stats (if enabled)
+    if raw_store:
+        rs = raw_store.stats()
+        print(f"\nRaw Scrape Cache: {rs['total_raw_records']} total, {rs['pending_llm_processing']} pending LLM")
+        for src, cnt in rs["by_source"].items():
+            print(f"  • {src}: {cnt} raw records")
+
     print("=" * 65 + "\n")
 
 
@@ -81,12 +95,17 @@ def main():
     parser = argparse.ArgumentParser(description="Researchly.io Conference Ingestion Pipeline")
     parser.add_argument("--db", default="researchly.db", help="Path to SQLite database file")
     parser.add_argument("--fixture", default="fixtures/sample_conferences.json", help="Path to JSON fixture file")
-    parser.add_argument("--no-fixture", action="store_true", help="Do not load seed fixtures")
-    parser.add_argument("--sources", help="Comma-separated list of adapters to run: openreview,official,openalex,crossref,wikicfp,ieee,acm,icml,generic,all_live")
+    # NOTE: Fixture is DISABLED by default in production runs.
+    # Use --with-fixture only for offline testing.
+    parser.add_argument("--with-fixture", action="store_true", help="Load seed fixture file (test/offline use only)")
+    parser.add_argument("--no-fixture", action="store_true", help="[Deprecated] Fixture is now off by default; this flag is a no-op")
+    parser.add_argument("--sources", help="Comma-separated list of adapters to run: openreview,official,openalex,crossref,wikicfp,ieee,acm,icml,generic,cfp_feed,conf_alerts,wikicfp_broad,core,all_live")
     parser.add_argument("--generic-urls", help="Comma-separated list of generic event URLs to ingest")
     parser.add_argument("--with-live", action="store_true", help="Include live official source adapters (ICML)")
     parser.add_argument("--with-wikicfp", action="store_true", help="Attempt WikiCFP adapter (respecting network & access rules)")
-    parser.add_argument("--with-cfp-feeds", action="store_true", help="Include curated academic CFP feeds (ai-deadlines, sec-deadlines)")
+    parser.add_argument("--with-cfp-feeds", action="store_true", help="Include curated academic CFP feeds (ai-deadlines, sec-deadlines, and more)")
+    parser.add_argument("--with-broad", action="store_true", help="Include broad discovery adapters (ConferenceAlerts, WikiCFP multi-query, CORE portal)")
+    parser.add_argument("--with-raw-store", action="store_true", help="Cache raw scraped content in DB before processing (enables LLM queue)")
     parser.add_argument("--assess", help="Assess credibility for a specific conference ID (or 'all')")
     parser.add_argument("--evidence-fixture", default="fixtures/sample_evidence.json", help="Path to evidence fixtures")
     parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose debug logging")
@@ -103,21 +122,28 @@ def main():
     configure_logging(args.verbose)
 
     repo = SQLiteConferenceRepository(db_path=args.db)
+    raw_store = RawCollectionStore(db_path=args.db) if args.with_raw_store else None
     adapters: List[SourceAdapter] = []
 
     selected_sources = [s.strip().lower() for s in args.sources.split(",")] if args.sources else []
 
-    # 1. Fixture adapter (unless explicitly disabled or sources specified without fixture)
-    if not args.no_fixture and (not selected_sources or "fixture" in selected_sources):
+    # 1. Fixture adapter — DISABLED by default.  Only loaded when --with-fixture is given
+    #    or when "fixture" is explicitly named in --sources.
+    #    Fixture data must NEVER appear in production discovery results.
+    if args.with_fixture or "fixture" in selected_sources:
         fixture_path = Path(args.fixture)
         if fixture_path.exists():
             adapters.append(FixtureAdapter(fixture_path=fixture_path, source_name="fixture_seed"))
+            logging.warning(
+                "⚠ Fixture adapter enabled — records from '%s' are TEST DATA, not real scraped events.",
+                fixture_path,
+            )
         else:
             logging.warning("Fixture file not found at %s; skipping fixture adapter", fixture_path)
 
     # 2. OpenReview Public API
     if "openreview" in selected_sources or "all_live" in selected_sources:
-        adapters.append(OpenReviewAdapter(max_venues=10))
+        adapters.append(OpenReviewAdapter(max_venues=25))
 
     # 3. Reusable Official Site Adapter (NeurIPS, ACL, ICLR)
     if "official" in selected_sources or "all_live" in selected_sources:
@@ -135,7 +161,7 @@ def main():
     if args.with_live or "icml" in selected_sources or "all_live" in selected_sources:
         adapters.append(ICMLOfficialAdapter())
 
-    # 7. WikiCFP adapter
+    # 7. WikiCFP adapter (single-query, legacy)
     if args.with_wikicfp or "wikicfp" in selected_sources or "all_live" in selected_sources:
         adapters.append(WikiCFPAdapter())
 
@@ -153,9 +179,21 @@ def main():
         if urls:
             adapters.append(GenericEventAdapter(urls=urls))
 
-    # 10. Public Curated Academic CFP Feeds (ai-deadlines, sec-deadlines)
+    # 10. Public Curated Academic CFP Feeds (ai-deadlines + expanded feeds)
     if "cfp_feed" in selected_sources or "all_live" in selected_sources or args.with_cfp_feeds:
-        adapters.append(PublicCFPFeedAdapter(max_records_per_feed=15))
+        adapters.append(PublicCFPFeedAdapter(max_records_per_feed=30, raw_store=raw_store))
+
+    # 11. Broad discovery: ConferenceAlerts RSS (global, India, interdisciplinary)
+    if "conf_alerts" in selected_sources or args.with_broad or "all_live" in selected_sources:
+        adapters.append(ConferenceAlertsAdapter(max_per_feed=20, raw_store=raw_store))
+
+    # 12. WikiCFP multi-domain broad adapter
+    if "wikicfp_broad" in selected_sources or args.with_broad or "all_live" in selected_sources:
+        adapters.append(WikiCFPBroadAdapter(max_records_per_query=8, raw_store=raw_store))
+
+    # 13. CORE Conference Portal (ranked computing conferences)
+    if "core" in selected_sources or args.with_broad or "all_live" in selected_sources:
+        adapters.append(COREConferencePortalAdapter(max_pages=3, raw_store=raw_store))
 
     if not adapters and not args.match_only:
         print("Error: No source adapters configured to run.")
@@ -164,7 +202,7 @@ def main():
     if not args.match_only:
         pipeline = IngestionPipeline(repository=repo, adapters=adapters)
         stats, source_reports = pipeline.run()
-        print_summary(stats, source_reports, repo)
+        print_summary(stats, source_reports, repo, raw_store=raw_store)
 
     # 4. Optional Credibility Assessment
     if args.assess and not args.match_only:

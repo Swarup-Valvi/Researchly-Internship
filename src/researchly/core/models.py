@@ -48,6 +48,14 @@ class EventType(str, Enum):
     UNKNOWN = "unknown"
 
 
+class AcademicLevel(str, Enum):
+    PROFESSIONAL = "professional"          # Top-tier / general professional academic (NeurIPS, ICML, etc.)
+    UNIVERSITY = "university"              # University/college departmental event
+    STUDENT = "student"                    # Student symposium, doctoral consortium, graduate colloquium
+    INTERDISCIPLINARY = "interdisciplinary"# Broad cross-departmental / cross-disciplinary research
+    UNKNOWN = "unknown"                    # No evidence of academic level
+
+
 class PaperOpportunityStatus(str, Enum):
     CONFIRMED = "confirmed"              # Explicit CFP / paper submission track
     INCOMPLETE = "incomplete"            # Academic event but CFP dates/guidelines not yet posted
@@ -121,6 +129,8 @@ class NormalizedConference(BaseModel):
     paper_opportunity_status: str = Field(default="unverified", description="Paper submission availability: confirmed, incomplete, attendance_only, unverified")
     has_paper_submission: bool = Field(default=True, description="True if researchers can submit and present papers")
     submission_url: Optional[str] = Field(default=None, description="Direct URL to submission portal or CFP instructions")
+    academic_level: str = Field(default="unknown", description="Academic tier/level: professional, university, student, interdisciplinary, or unknown")
+    extracted_by_llm: Optional[str] = Field(default=None, description="LLM provider name if enriched (e.g. 'gemini-3.5-flash', 'deepseek-chat')")
     warnings: List[str] = Field(default_factory=list, description="Data-quality warnings")
 
 

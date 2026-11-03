@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from datetime import date
 from typing import List, Optional
@@ -11,10 +12,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
+logger = logging.getLogger("researchly.api")
+
 from ..storage.repository import SQLiteConferenceRepository
 from ..credibility.service import CredibilityService
 from ..matching.service import MatchingService
 from ..matching.models import PaperInput as MatchingPaperInput, MatchingResult
+from ..core.scheduler import ScrapingScheduler
+from ..llm import DualLLMEnricher
 
 # Load environment variables
 load_dotenv()
@@ -35,6 +40,20 @@ db_path = os.getenv("DATABASE_PATH", "researchly.db")
 repo = SQLiteConferenceRepository(db_path=db_path)
 cred_service = CredibilityService(repository=repo)
 matcher = MatchingService(repository=repo, credibility_service=cred_service)
+scheduler = ScrapingScheduler(db_path=db_path, interval_hours=6.0)
+enricher = DualLLMEnricher(db_path=db_path)
+
+@app.on_event("startup")
+def startup_event():
+    # Start the scheduler only. Enrichment is manual so startup never calls an AI provider.
+    try:
+        scheduler.start_background_loop()
+    except Exception as exc:
+        logger.error("Scheduler failed to start; API will continue without it: %s", exc)
+
+@app.on_event("shutdown")
+def shutdown_event():
+    scheduler.stop_background_loop()
 
 
 # Pydantic models for API
@@ -61,6 +80,8 @@ class ConferenceResponse(BaseModel):
     event_type: str = "conference"
     paper_opportunity_status: str = "unverified"
     has_paper_submission: bool = True
+    academic_level: str = "unknown"
+    extracted_by_llm: Optional[str] = None
     warnings: List[str] = []
 
 
@@ -102,6 +123,17 @@ class ConferenceRecommendationResponse(BaseModel):
     warnings: List[str] = []
 
 
+class EnrichmentStatusResponse(BaseModel):
+    pending: int
+    processed: int
+    failed: int
+    cached: int
+    in_cooldown: int = 0
+    enrichment_running: bool = False
+    gemini_configured: bool = False
+    deepseek_configured: bool = False
+
+
 class MatchingResultResponse(BaseModel):
     paper_title: str
     total_conferences_evaluated: int
@@ -110,6 +142,36 @@ class MatchingResultResponse(BaseModel):
     upcoming_unknown_deadline: List[ConferenceRecommendationResponse] = []
     historical_completed: List[ConferenceRecommendationResponse] = []
     date_unknown: List[ConferenceRecommendationResponse] = []
+
+
+def _conference_response(conference) -> ConferenceResponse:
+    return ConferenceResponse(
+        id=conference.id,
+        name=conference.name,
+        edition_or_year=conference.edition_or_year,
+        title=conference.title,
+        submission_deadline=conference.submission_deadline,
+        raw_submission_deadline_str=conference.raw_submission_deadline_str,
+        start_date=conference.start_date,
+        end_date=conference.end_date,
+        location=conference.location,
+        format=conference.format,
+        publisher=conference.publisher,
+        organizer=conference.organizer,
+        registration_fees=conference.registration_fees,
+        topics=conference.topics,
+        official_website_url=conference.official_website_url,
+        submission_url=conference.submission_url,
+        status=conference.status,
+        event_status=conference.event_status,
+        submission_status=conference.submission_status,
+        event_type=conference.event_type,
+        paper_opportunity_status=conference.paper_opportunity_status,
+        has_paper_submission=conference.has_paper_submission,
+        academic_level=conference.academic_level or "unknown",
+        extracted_by_llm=conference.extracted_by_llm,
+        warnings=conference.warnings,
+    )
 
 
 @app.get("/")
@@ -147,34 +209,7 @@ async def list_conferences(
         min_deadline=min_deadline,
         max_deadline=max_deadline,
     )
-    return [
-        ConferenceResponse(
-            id=c.id,
-            name=c.name,
-            edition_or_year=c.edition_or_year,
-            title=c.title,
-            submission_deadline=c.submission_deadline,
-            raw_submission_deadline_str=c.raw_submission_deadline_str,
-            start_date=c.start_date,
-            end_date=c.end_date,
-            location=c.location,
-            format=c.format,
-            publisher=c.publisher,
-            organizer=c.organizer,
-            registration_fees=c.registration_fees,
-            topics=c.topics,
-            official_website_url=c.official_website_url,
-            submission_url=c.submission_url,
-            status=c.status,
-            event_status=c.event_status,
-            submission_status=c.submission_status,
-            event_type=c.event_type,
-            paper_opportunity_status=c.paper_opportunity_status,
-            has_paper_submission=c.has_paper_submission,
-            warnings=c.warnings,
-        )
-        for c in conferences
-    ]
+    return [_conference_response(c) for c in conferences]
 
 
 @app.get("/api/conferences/{conference_id}", response_model=ConferenceResponse)
@@ -183,31 +218,7 @@ async def get_conference(conference_id: str):
     conference = repo.get_by_id(conference_id)
     if not conference:
         raise HTTPException(status_code=404, detail="Conference not found")
-    return ConferenceResponse(
-        id=conference.id,
-        name=conference.name,
-        edition_or_year=conference.edition_or_year,
-        title=conference.title,
-        submission_deadline=conference.submission_deadline,
-        raw_submission_deadline_str=conference.raw_submission_deadline_str,
-        start_date=conference.start_date,
-        end_date=conference.end_date,
-        location=conference.location,
-        format=conference.format,
-        publisher=conference.publisher,
-        organizer=conference.organizer,
-        registration_fees=conference.registration_fees,
-        topics=conference.topics,
-        official_website_url=conference.official_website_url,
-        submission_url=conference.submission_url,
-        status=conference.status,
-        event_status=conference.event_status,
-        submission_status=conference.submission_status,
-        event_type=conference.event_type,
-        paper_opportunity_status=conference.paper_opportunity_status,
-        has_paper_submission=conference.has_paper_submission,
-        warnings=conference.warnings,
-    )
+    return _conference_response(conference)
 
 
 @app.get("/api/credibility/{conference_id}", response_model=CredibilityResponse)
@@ -286,6 +297,23 @@ async def match_paper(request: PaperMatchRequest):
         historical_completed=[convert_recommendation(r) for r in result.historical_completed],
         date_unknown=[convert_recommendation(r) for r in result.date_unknown],
     )
+
+
+@app.get("/api/enrichment/status", response_model=EnrichmentStatusResponse)
+async def enrichment_status():
+    """Pending, processed, failed, and cached enrichment counts. Never returns credentials."""
+    return EnrichmentStatusResponse(**enricher.status())
+
+
+@app.post("/api/enrichment/run")
+async def run_enrichment(limit: int = 5):
+    """Enrich a small batch. At most 10 records per request, and only one run at a time."""
+    if limit < 1 or limit > 10:
+        raise HTTPException(status_code=400, detail="Batch limit must be between 1 and 10")
+    result = enricher.process_unprocessed_records(max_records=limit)
+    if result.get("status") == "rejected":
+        raise HTTPException(status_code=409, detail=result.get("reason"))
+    return result
 
 
 @app.get("/api/health")

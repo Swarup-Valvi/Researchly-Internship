@@ -14,9 +14,36 @@ from .models import (
     EventLifecycleStatus,
     SubmissionLifecycleStatus,
     EventType,
+    AcademicLevel,
     PaperOpportunityStatus,
     generate_stable_id
 )
+
+
+def classify_academic_level(name: str, title: Optional[str] = None, metadata: Optional[dict] = None) -> AcademicLevel:
+    """Classify academic level (student, university, interdisciplinary, professional)."""
+    combined = f"{name} {title or ''}".lower()
+    meta = metadata or {}
+    if meta.get("academic_level"):
+        lvl = str(meta["academic_level"]).lower()
+        if lvl in ("unknown", "unspecified", "none", "null", "n/a"):
+            return AcademicLevel.UNKNOWN
+        if "student" in lvl:
+            return AcademicLevel.STUDENT
+        if "univ" in lvl or "college" in lvl or "department" in lvl:
+            return AcademicLevel.UNIVERSITY
+        if "interdisciplinary" in lvl or "cross" in lvl:
+            return AcademicLevel.INTERDISCIPLINARY
+        if "professional" in lvl:
+            return AcademicLevel.PROFESSIONAL
+
+    if any(k in combined for k in ["student", "doctoral", "graduate", "phd", "undergraduate", "consortium", "scholar meet"]):
+        return AcademicLevel.STUDENT
+    elif any(k in combined for k in ["university", "college", "institute", "department", "iit", "nit", "iisc", "campus"]):
+        return AcademicLevel.UNIVERSITY
+    elif any(k in combined for k in ["interdisciplinary", "multidisciplinary", "cross-disciplinary", "science & religion"]):
+        return AcademicLevel.INTERDISCIPLINARY
+    return AcademicLevel.UNKNOWN
 
 
 def classify_event_type(name: str, title: Optional[str] = None, metadata: Optional[dict] = None) -> EventType:
@@ -24,7 +51,9 @@ def classify_event_type(name: str, title: Optional[str] = None, metadata: Option
     combined = f"{name} {title or ''}".lower()
     
     if metadata and metadata.get("event_type"):
-        et = metadata["event_type"].lower()
+        et = str(metadata["event_type"]).lower()
+        if et in ("unknown", "unspecified", "none", "null", "n/a"):
+            return EventType.UNKNOWN
         if "workshop" in et:
             return EventType.WORKSHOP
         if "symposium" in et:
@@ -343,6 +372,10 @@ def normalize_conference(raw: RawConferenceData, now_iso: Optional[str] = None) 
         has_paper_submission=has_paper_sub
     )
 
+    # Academic level classification
+    academic_level = classify_academic_level(name, title_str, raw.extra_metadata)
+    extracted_by_llm = raw.extra_metadata.get("extracted_by_llm") if raw.extra_metadata else None
+
     # Specific warnings for incomplete or attendance-only
     if opp_status == PaperOpportunityStatus.ATTENDANCE_ONLY:
         warnings.append("Attendance-only event: no academic paper submission track identified.")
@@ -376,6 +409,8 @@ def normalize_conference(raw: RawConferenceData, now_iso: Optional[str] = None) 
         paper_opportunity_status=opp_status.value,
         has_paper_submission=has_paper_sub,
         submission_url=sub_url,
+        academic_level=academic_level.value,
+        extracted_by_llm=extracted_by_llm,
         warnings=warnings,
     )
 
