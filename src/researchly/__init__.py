@@ -1,2 +1,0 @@
-"""Researchly.io backend package."""
-
