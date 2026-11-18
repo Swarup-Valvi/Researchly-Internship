@@ -72,6 +72,27 @@ local parts are redacted from stored quotes. A missing `GEMINI_API_KEY` skips en
 anything. Enrichment has its own `enrichment: tos_reviewed` guard in `config/sources.yaml`, because it reads
 third-party sites. Unchanged sites (same content hash) reuse the cached verified fields with no LLM call.
 
+### Evidence for the credibility engine
+The LLM never scores. It proposes `{field, value, quote}`; code keeps a quote only if it occurs verbatim on the page it
+came from. The backend engine computes every status and score from this evidence.
+- **Pages read per site:** the official page, its proceedings page when the site links to one, and (opt-in,
+  `ENABLE_SEARCH_DISCOVERY=true`) up to 2 pages found with Gemini Google Search grounding. Discovered URLs are only
+  candidates: fetched under robots.txt/rate limits, used only if the page names the conference, and quotes are still
+  verified against that page.
+- **Extra fields:** `organizer`, `peer_review_statement`, `registration_fee_text`, `risk_phrases`.
+- **Risk phrases** (`extractors/risk_phrases.py`): guaranteed acceptance, publish-in-N-days, very short review
+  (≤ 7 days), acceptance tied to payment, committee "to be announced". Every page read is pattern-scanned by code; an
+  LLM-proposed phrase is kept only if the patterns confirm its category on the verbatim quote.
+- **Rejected quotes** are kept per record (`enrichment.rejected`: field, quote, reason) for auditing.
+- **History:** ccfddl `series_years` (every year the series appears in the dataset; a lower bound).
+- **Live lookups** (`lookups.py`, run by the pipeline for new or changed records, cached on the record with an input
+  hash; TTL 30 days for DBLP/RDAP, 7 for OpenAlex; budget `MAX_LOOKUPS_PER_RUN`=200; `--no-lookups` /
+  `DISABLE_LIVE_LOOKUPS=true` to skip): DBLP via its SPARQL endpoint by `dblp_key` (indexed? years with publications),
+  RDAP domain age, OpenAlex committee **aggregate counts**. dblp.org/search is disallowed by dblp's robots.txt and is
+  not used. Guarded by `lookups: tos_reviewed` in `sources.yaml`.
+- **Eval:** `python eval/credibility_e2e.py --n 20 --out e2e.json` (live), then
+  `node ../backend/scripts/credibility_eval.mjs e2e.json --md`.
+
 ### Compliance guard
 Live crawling of a source is **refused** unless `tos_reviewed: true` for it in `sources.yaml`. Read that site's
 Terms of Service and `robots.txt`, then flip the flag yourself. The pipeline also: honours `robots.txt` (skips are
