@@ -1,5 +1,11 @@
 import crypto from 'crypto';
 import { getSupabase, isSupabaseReady } from './supabase.js';
+
+/** Never swallow Supabase failures: log table + operation + message (local store remains the fallback). */
+function logSupabaseError(table, op, error) {
+  if (error?.code === 'PGRST116') return; // .single() found no row: a normal miss, not a failure
+  console.error(`[Store] Supabase ${op} on table "${table}" failed: ${error?.message || error}`);
+}
 import { REAL_ACADEMIC_EVENTS } from './realEvents.js';
 import { evaluateConferenceCredibility } from '../services/credibilityEngine.js';
 import { config } from '../config/env.js';
@@ -70,11 +76,13 @@ export const store = {
         }
 
         const { data, error } = await query;
+
+        if (error) logSupabaseError('conferences', 'select', error);
         if (!error && data && data.length > 0) {
           return data;
         }
       } catch (err) {
-        console.warn('[Store] Supabase getConferences error, falling back to local store:', err.message);
+        logSupabaseError('conferences', 'getConferences', err);
       }
     }
 
@@ -132,9 +140,10 @@ export const store = {
           .select('*')
           .or(`id.eq.${idOrSlug},slug.eq.${idOrSlug}`)
           .single();
+        if (error) logSupabaseError('conferences', 'select', error);
         if (!error && data) return data;
       } catch (err) {
-        console.warn('[Store] Supabase getConferenceById error:', err.message);
+        logSupabaseError('conferences', 'getConferenceById', err);
       }
     }
 
@@ -159,9 +168,10 @@ export const store = {
     if (isSupabaseReady()) {
       try {
         const supabase = getSupabase();
-        await supabase.from('conferences').upsert(newConf);
+        const { error } = await supabase.from('conferences').upsert(newConf);
+        if (error) logSupabaseError('conferences', 'upsert', error);
       } catch (err) {
-        console.warn('[Store] Supabase saveConference error:', err.message);
+        logSupabaseError('conferences', 'saveConference', err);
       }
     }
 
@@ -184,9 +194,10 @@ export const store = {
           .select('*')
           .eq('conference_id', conferenceId)
           .single();
+        if (error) logSupabaseError('credibility_audits', 'select', error);
         if (!error && data) return data;
       } catch (err) {
-        console.warn('[Store] Supabase getCredibilityAudit error:', err.message);
+        logSupabaseError('credibility_audits', 'getCredibilityAudit', err);
       }
     }
 
@@ -197,9 +208,10 @@ export const store = {
     if (isSupabaseReady()) {
       try {
         const supabase = getSupabase();
-        await supabase.from('credibility_audits').upsert(audit);
+        const { error } = await supabase.from('credibility_audits').upsert(audit, { onConflict: 'conference_id' }); // one audit per conference
+        if (error) logSupabaseError('credibility_audits', 'upsert', error);
       } catch (err) {
-        console.warn('[Store] Supabase saveCredibilityAudit error:', err.message);
+        logSupabaseError('credibility_audits', 'saveCredibilityAudit', err);
       }
     }
 
@@ -217,9 +229,10 @@ export const store = {
           .select('*')
           .eq('conference_id', conferenceId)
           .order('detected_at', { ascending: false });
+        if (error) logSupabaseError('deadline_history', 'select', error);
         if (!error && data) return data;
       } catch (err) {
-        console.warn('[Store] Supabase getDeadlineHistory error:', err.message);
+        logSupabaseError('deadline_history', 'getDeadlineHistory', err);
       }
     }
 
@@ -241,9 +254,10 @@ export const store = {
     if (isSupabaseReady()) {
       try {
         const supabase = getSupabase();
-        await supabase.from('deadline_history').insert(record);
+        const { error } = await supabase.from('deadline_history').insert(record);
+        if (error) logSupabaseError('deadline_history', 'insert', error);
       } catch (err) {
-        console.warn('[Store] Supabase recordDeadlineChange error:', err.message);
+        logSupabaseError('deadline_history', 'recordDeadlineChange', err);
       }
     }
 
@@ -260,9 +274,10 @@ export const store = {
           .from('posts')
           .select('*')
           .order('created_at', { ascending: false });
+        if (error) logSupabaseError('posts', 'select', error);
         if (!error && data && data.length > 0) return data;
       } catch (err) {
-        console.warn('[Store] Supabase getPosts error:', err.message);
+        logSupabaseError('posts', 'getPosts', err);
       }
     }
 
@@ -289,9 +304,10 @@ export const store = {
     if (isSupabaseReady()) {
       try {
         const supabase = getSupabase();
-        await supabase.from('posts').insert(newPost);
+        const { error } = await supabase.from('posts').insert(newPost);
+        if (error) logSupabaseError('posts', 'insert', error);
       } catch (err) {
-        console.warn('[Store] Supabase createPost error:', err.message);
+        logSupabaseError('posts', 'createPost', err);
       }
     }
 
@@ -317,9 +333,10 @@ export const store = {
     if (isSupabaseReady()) {
       try {
         const supabase = getSupabase();
-        await supabase.from('posts').update({ likes_count: post.likes_count }).eq('id', postId);
+        const { error } = await supabase.from('posts').update({ likes_count: post.likes_count }).eq('id', postId);
+        if (error) logSupabaseError('posts', 'update', error);
       } catch (err) {
-        console.warn('[Store] Supabase toggleLike update error:', err.message);
+        logSupabaseError('posts', 'toggleLike', err);
       }
     }
 
@@ -335,9 +352,10 @@ export const store = {
           .select('*')
           .eq('post_id', postId)
           .order('created_at', { ascending: true });
+        if (error) logSupabaseError('post_comments', 'select', error);
         if (!error && data) return data;
       } catch (err) {
-        console.warn('[Store] Supabase getComments error:', err.message);
+        logSupabaseError('post_comments', 'getComments', err);
       }
     }
 
@@ -359,9 +377,10 @@ export const store = {
     if (isSupabaseReady()) {
       try {
         const supabase = getSupabase();
-        await supabase.from('post_comments').insert(newComment);
+        const { error } = await supabase.from('post_comments').insert(newComment);
+        if (error) logSupabaseError('post_comments', 'insert', error);
       } catch (err) {
-        console.warn('[Store] Supabase addComment error:', err.message);
+        logSupabaseError('post_comments', 'addComment', err);
       }
     }
 
@@ -384,9 +403,10 @@ export const store = {
           .from('applications')
           .select('*')
           .order('updated_at', { ascending: false });
+        if (error) logSupabaseError('applications', 'select', error);
         if (!error && data && data.length > 0) return data;
       } catch (err) {
-        console.warn('[Store] Supabase getApplications error:', err.message);
+        logSupabaseError('applications', 'getApplications', err);
       }
     }
 
@@ -412,9 +432,10 @@ export const store = {
     if (isSupabaseReady()) {
       try {
         const supabase = getSupabase();
-        await supabase.from('applications').insert(newApp);
+        const { error } = await supabase.from('applications').insert(newApp);
+        if (error) logSupabaseError('applications', 'insert', error);
       } catch (err) {
-        console.warn('[Store] Supabase createApplication error:', err.message);
+        logSupabaseError('applications', 'createApplication', err);
       }
     }
 
@@ -435,9 +456,10 @@ export const store = {
     if (isSupabaseReady()) {
       try {
         const supabase = getSupabase();
-        await supabase.from('applications').update(applications[idx]).eq('id', id);
+        const { error } = await supabase.from('applications').update(applications[idx]).eq('id', id);
+        if (error) logSupabaseError('applications', 'update', error);
       } catch (err) {
-        console.warn('[Store] Supabase updateApplication error:', err.message);
+        logSupabaseError('applications', 'updateApplication', err);
       }
     }
 
@@ -453,9 +475,10 @@ export const store = {
     if (isSupabaseReady()) {
       try {
         const supabase = getSupabase();
-        await supabase.from('applications').delete().eq('id', id);
+        const { error } = await supabase.from('applications').delete().eq('id', id);
+        if (error) logSupabaseError('applications', 'delete', error);
       } catch (err) {
-        console.warn('[Store] Supabase deleteApplication error:', err.message);
+        logSupabaseError('applications', 'deleteApplication', err);
       }
     }
 
@@ -471,9 +494,10 @@ export const store = {
           .from('paper_reviews')
           .select('*')
           .order('created_at', { ascending: false });
+        if (error) logSupabaseError('paper_reviews', 'select', error);
         if (!error && data && data.length > 0) return data;
       } catch (err) {
-        console.warn('[Store] Supabase getPaperReviews error:', err.message);
+        logSupabaseError('paper_reviews', 'getPaperReviews', err);
       }
     }
 
@@ -502,9 +526,10 @@ export const store = {
     if (isSupabaseReady()) {
       try {
         const supabase = getSupabase();
-        await supabase.from('paper_reviews').insert(newReview);
+        const { error } = await supabase.from('paper_reviews').insert(newReview);
+        if (error) logSupabaseError('paper_reviews', 'insert', error);
       } catch (err) {
-        console.warn('[Store] Supabase savePaperReview error:', err.message);
+        logSupabaseError('paper_reviews', 'savePaperReview', err);
       }
     }
 
@@ -551,7 +576,8 @@ export const store = {
     if (isSupabaseReady()) {
       try {
         const supabase = getSupabase();
-        const { data: dbProfiles } = await supabase.from('profiles').select('*');
+        const { data: dbProfiles, error: dbProfilesError } = await supabase.from('profiles').select('*');
+        if (dbProfilesError) logSupabaseError('profiles', 'select', dbProfilesError);
         if (dbProfiles && dbProfiles.length > 0) {
           // Merge real profiles with researchers
           const mappedDbProfiles = dbProfiles.map(p => ({
@@ -579,10 +605,11 @@ export const store = {
 
         // Fetch real connections for this user if logged in
         if (currentUserId) {
-          const { data: dbConnections } = await supabase
+          const { data: dbConnections, error: dbConnectionsError } = await supabase
             .from('colleague_connections')
             .select('*')
             .or(`user_id.eq.${currentUserId},target_user_id.eq.${currentUserId}`);
+          if (dbConnectionsError) logSupabaseError('colleague_connections', 'select', dbConnectionsError);
           
           if (dbConnections && dbConnections.length > 0) {
             // Merge into local connections
@@ -594,7 +621,7 @@ export const store = {
           }
         }
       } catch (err) {
-        console.warn('[Store] Supabase researchers sync error:', err.message);
+        logSupabaseError('profiles/colleague_connections', 'getResearchers', err);
       }
     }
 
@@ -684,11 +711,12 @@ export const store = {
     if (isSupabaseReady()) {
       try {
         const supabase = getSupabase();
-        const { data: dbRequests } = await supabase
+        const { data: dbRequests, error: dbRequestsError } = await supabase
           .from('colleague_connections')
           .select('*, sender:profiles!colleague_connections_user_id_fkey(*)')
           .eq('target_user_id', currentUserId)
           .eq('status', 'pending');
+        if (dbRequestsError) logSupabaseError('colleague_connections', 'select', dbRequestsError);
 
         if (dbRequests && dbRequests.length > 0) {
           return dbRequests.map(req => ({
@@ -705,7 +733,7 @@ export const store = {
           }));
         }
       } catch (e) {
-        console.warn('[Store] Supabase getPendingRequests fallback:', e.message);
+        logSupabaseError('colleague_connections', 'getPendingRequests', e);
       }
     }
 
@@ -768,7 +796,7 @@ export const store = {
     if (isSupabaseReady()) {
       try {
         const supabase = getSupabase();
-        await supabase.from('colleague_connections').upsert({
+        const { error } = await supabase.from('colleague_connections').upsert({
           user_id: senderId,
           target_user_id: targetId,
           status: 'pending',
@@ -776,8 +804,9 @@ export const store = {
           created_at: now,
           updated_at: now
         }, { onConflict: 'user_id,target_user_id' });
+        if (error) logSupabaseError('colleague_connections', 'upsert', error);
       } catch (err) {
-        console.warn('[Store] Supabase sendConnectionRequest sync error:', err.message);
+        logSupabaseError('colleague_connections', 'sendConnectionRequest', err);
       }
     }
 
@@ -819,12 +848,13 @@ export const store = {
     if (isSupabaseReady()) {
       try {
         const supabase = getSupabase();
-        await supabase
+        const { error } = await supabase
           .from('colleague_connections')
           .update({ status: 'connected', updated_at: now })
           .or(`and(user_id.eq.${otherId},target_user_id.eq.${userId}),and(user_id.eq.${userId},target_user_id.eq.${otherId})`);
+        if (error) logSupabaseError('colleague_connections', 'update', error);
       } catch (err) {
-        console.warn('[Store] Supabase acceptConnectionRequest error:', err.message);
+        logSupabaseError('colleague_connections', 'acceptConnectionRequest', err);
       }
     }
 
@@ -853,12 +883,13 @@ export const store = {
     if (isSupabaseReady()) {
       try {
         const supabase = getSupabase();
-        await supabase
+        const { error } = await supabase
           .from('colleague_connections')
           .delete()
           .or(`and(user_id.eq.${otherId},target_user_id.eq.${userId}),and(user_id.eq.${userId},target_user_id.eq.${otherId})`);
+        if (error) logSupabaseError('colleague_connections', 'delete', error);
       } catch (err) {
-        console.warn('[Store] Supabase rejectConnectionRequest error:', err.message);
+        logSupabaseError('colleague_connections', 'rejectConnectionRequest', err);
       }
     }
 
@@ -887,12 +918,13 @@ export const store = {
     if (isSupabaseReady()) {
       try {
         const supabase = getSupabase();
-        await supabase
+        const { error } = await supabase
           .from('colleague_connections')
           .delete()
           .or(`and(user_id.eq.${userId},target_user_id.eq.${otherId}),and(user_id.eq.${otherId},target_user_id.eq.${userId})`);
+        if (error) logSupabaseError('colleague_connections', 'delete', error);
       } catch (err) {
-        console.warn('[Store] Supabase disconnectResearcher error:', err.message);
+        logSupabaseError('colleague_connections', 'disconnectResearcher', err);
       }
     }
 

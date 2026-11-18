@@ -58,17 +58,39 @@ CREATE TABLE IF NOT EXISTS public.conferences (
     publisher TEXT,
     organizer TEXT,
     fees TEXT,
-    ranking TEXT DEFAULT 'Core A*',
+    ranking TEXT,                                   -- no default: a ranking is only ever a sourced claim
     official_url TEXT,
     submission_url TEXT,
     topics TEXT[] DEFAULT ARRAY[]::TEXT[],
-    credibility_score INTEGER DEFAULT 90,
-    risk_level TEXT DEFAULT 'Low',
+    credibility_score INTEGER,                      -- NULL until an audit computes it (never a default score)
+    risk_level TEXT DEFAULT 'Not assessed',
     has_paper_submission BOOLEAN DEFAULT true,
     is_extended BOOLEAN DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    -- pipeline / provenance fields (migrations/001_pipeline_fields.sql)
+    slug TEXT,
+    edition_number INTEGER,
+    notification_date DATE,
+    camera_ready DATE,
+    venue TEXT,
+    data_origin TEXT,                               -- 'pipeline' | 'curated_seed'
+    needs_verification BOOLEAN NOT NULL DEFAULT false,
+    source_primary TEXT,                            -- ieee | acm | springer | individual | wikicfp
+    source_urls TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+    pipeline_confidence REAL,
+    extraction_method TEXT,                         -- structured | heuristic | llm_assisted
+    scraped_at TIMESTAMPTZ,
+    raw_snapshot_ref TEXT,
+    indexing_claims JSONB NOT NULL DEFAULT '{}'::JSONB,
+    sponsors_claimed TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+    sponsors_verified_source TEXT,
+    claim_snippets TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+    pipeline_conference_id TEXT,
+    committee_summary JSONB                         -- aggregate counts only; committee NAMES are never stored
 );
+CREATE UNIQUE INDEX IF NOT EXISTS conferences_slug_key ON public.conferences (slug) WHERE slug IS NOT NULL;
+CREATE INDEX IF NOT EXISTS conferences_pipeline_conference_id_idx ON public.conferences (pipeline_conference_id);
 
 -- 3. DEADLINE_HISTORY TABLE (Extension & Drift Tracking)
 CREATE TABLE IF NOT EXISTS public.deadline_history (
@@ -86,22 +108,27 @@ CREATE TABLE IF NOT EXISTS public.deadline_history (
 CREATE TABLE IF NOT EXISTS public.credibility_audits (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     conference_id TEXT UNIQUE REFERENCES public.conferences(id) ON DELETE CASCADE,
-    overall_score INTEGER NOT NULL,
+    overall_score INTEGER,                          -- NULL = not enough evidence (migrations/002)
     risk_level TEXT NOT NULL,
-    domain_score INTEGER DEFAULT 95,
-    organizer_score INTEGER DEFAULT 95,
-    publisher_score INTEGER DEFAULT 95,
-    indexing_score INTEGER DEFAULT 95,
-    tpc_score INTEGER DEFAULT 90,
-    history_score INTEGER DEFAULT 95,
-    venue_score INTEGER DEFAULT 90,
-    fee_score INTEGER DEFAULT 85,
-    editorial_score INTEGER DEFAULT 90,
+    -- dimension scores: NULL when no check in that dimension ran; never defaulted
+    domain_score INTEGER,
+    organizer_score INTEGER,
+    publisher_score INTEGER,
+    indexing_score INTEGER,
+    tpc_score INTEGER,
+    history_score INTEGER,
+    venue_score INTEGER,
+    fee_score INTEGER,
+    editorial_score INTEGER,
     positive_indicators JSONB DEFAULT '[]'::JSONB,
     warning_indicators JSONB DEFAULT '[]'::JSONB,
     contradictions JSONB DEFAULT '[]'::JSONB,
     missing_information JSONB DEFAULT '[]'::JSONB,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    engine_version TEXT,
+    coverage NUMERIC(4,2),                          -- 0.00-1.00, weight of dimensions actually checked
+    checks JSONB NOT NULL DEFAULT '[]'::JSONB,      -- [{id,dimension,label,status,detail,evidence}]
+    limitations JSONB NOT NULL DEFAULT '[]'::JSONB
 );
 
 -- 5. POSTS TABLE (Academic Social Network Feed)
