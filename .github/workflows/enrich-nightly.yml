@@ -1,0 +1,89 @@
+name: enrich-nightly
+
+# 18:30 UTC = 00:00 IST. Re-reads the ccfddl dataset (one shallow clone), runs GROUNDED LLM enrichment on records
+# that are new or whose cached website check is older than ENRICH_RECHECK_DAYS (budget MAX_ENRICH_PER_RUN), then
+# POSTs to the backend. Every LLM value must quote the fetched page verbatim or it is dropped.
+# Idempotent: the enrichment cache in storage/state.json means unchanged sites cause no LLM call; the backend upserts.
+# Nothing is fetched until tos_reviewed is true for ccfddl AND for `enrichment` in config/sources.yaml,
+# and nothing is sent to the LLM unless the GEMINI_API_KEY secret exists.
+
+on:
+  schedule:
+    - cron: "30 18 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: researchly-pipeline-state
+  cancel-in-progress: false
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: researchly_pipeline/requirements.txt
+      - run: pip install -r researchly_pipeline/requirements.txt
+      - run: python -m pytest -q
+        working-directory: researchly_pipeline
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci && npm test
+        working-directory: backend
+
+  enrich:
+    needs: tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: researchly_pipeline/requirements.txt
+      - run: pip install -r researchly_pipeline/requirements.txt
+      - uses: actions/cache/restore@v4
+        with:
+          path: researchly_pipeline/storage/state.json
+          key: pipeline-state-${{ github.run_id }}
+          restore-keys: pipeline-state-
+      - name: Read ccfddl + grounded enrichment
+        working-directory: researchly_pipeline
+        env:
+          ENABLE_LLM_ENRICHMENT: "true"
+          MAX_ENRICH_PER_RUN: ${{ vars.MAX_ENRICH_PER_RUN || '50' }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+        # --full re-reads the dataset even if its SHA is unchanged: enrichment needs the records; the enrichment
+        # cache (not the dataset SHA) decides which sites are new or changed.
+        run: python run.py --source ccfddl --full
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: researchly_pipeline/storage/state.json
+          key: pipeline-state-${{ github.run_id }}
+      - name: Push to backend
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+          INGEST_TOKEN: ${{ secrets.INGEST_TOKEN }}
+        run: |
+          OUT=researchly_pipeline/storage/output/conferences.json
+          if [ ! -s "$OUT" ] || [ "$(python -c 'import json,sys;print(len(json.load(open(sys.argv[1]))))' "$OUT")" = "0" ]; then
+            echo "No records (source not reviewed?). Nothing to ingest."; exit 0
+          fi
+          curl -fsS --retry 3 --retry-delay 20 --max-time 300 -X POST "$BACKEND_URL/api/conferences/ingest" \
+            -H "content-type: application/json" -H "x-ingest-token: $INGEST_TOKEN" --data-binary @"$OUT"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: enrichment-diagnostics
+          path: |
+            researchly_pipeline/storage/failed/
+            researchly_pipeline/storage/output/metrics.json
+          if-no-files-found: ignore

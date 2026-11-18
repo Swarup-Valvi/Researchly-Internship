@@ -1,9 +1,18 @@
-name: ingest-conferences
+name: ingest-ccfddl
+
+# Every 12 h: read the ccfddl open dataset (MIT, (c) CCFDDL) and POST the records to the backend.
+# Idempotent: storage/state.json (restored from the Actions cache) holds the last processed commit SHA, so an
+# unchanged dataset is skipped after one `git ls-remote`, and the backend upserts by conference id.
+# Nothing is crawled until `tos_reviewed: true` is set for ccfddl in researchly_pipeline/config/sources.yaml.
 
 on:
   schedule:
-    - cron: "17 */12 * * *"   # every 12 hours (GitHub schedules can lag by several minutes)
+    - cron: "17 */12 * * *"
   workflow_dispatch:
+
+concurrency:
+  group: researchly-pipeline-state     # shared with enrich-nightly: never write state.json concurrently
+  cancel-in-progress: false
 
 jobs:
   tests:
@@ -37,20 +46,32 @@ jobs:
           cache: pip
           cache-dependency-path: researchly_pipeline/requirements.txt
       - run: pip install -r researchly_pipeline/requirements.txt
-      # Only sources with tos_reviewed: true in config/sources.yaml are crawled; others are skipped and reported.
-      - name: Run pipeline
+      # Only state.json is cached (commit SHA, URL hashes, verified enrichment quotes). No committee names.
+      - uses: actions/cache/restore@v4
+        with:
+          path: researchly_pipeline/storage/state.json
+          key: pipeline-state-${{ github.run_id }}
+          restore-keys: pipeline-state-
+      - name: Run ccfddl source
         working-directory: researchly_pipeline
-        run: python run.py --limit 100
+        run: python run.py --source ccfddl
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: researchly_pipeline/storage/state.json
+          key: pipeline-state-${{ github.run_id }}
       - name: Push to backend
         env:
           BACKEND_URL: ${{ secrets.BACKEND_URL }}
           INGEST_TOKEN: ${{ secrets.INGEST_TOKEN }}
         run: |
           OUT=researchly_pipeline/storage/output/conferences.json
-          if [ ! -s "$OUT" ]; then echo "No pipeline output (no reviewed sources?). Nothing to ingest."; exit 0; fi
+          if [ ! -s "$OUT" ] || [ "$(python -c 'import json,sys;print(len(json.load(open(sys.argv[1]))))' "$OUT")" = "0" ]; then
+            echo "Nothing new (dataset unchanged or source not reviewed). Nothing to ingest."; exit 0
+          fi
           curl -fsS --retry 3 --retry-delay 20 --max-time 180 -X POST "$BACKEND_URL/api/conferences/ingest" \
             -H "content-type: application/json" -H "x-ingest-token: $INGEST_TOKEN" --data-binary @"$OUT"
-      # Only dead-letter notes and run metrics are uploaded. storage/output/ (conferences.json) is NOT uploaded:
+      # Only dead-letter notes and run metrics are uploaded. storage/output/ is NOT uploaded:
       # it can contain program-committee names, which must not be persisted outside the audit.
       - uses: actions/upload-artifact@v4
         if: always()
