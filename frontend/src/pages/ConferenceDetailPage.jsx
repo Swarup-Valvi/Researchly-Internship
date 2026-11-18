@@ -20,6 +20,7 @@ import {
   History
 } from 'lucide-react';
 import { riskDisplay, scoreText } from '../lib/risk';
+import { deadlineLabel } from '../lib/deadline';
 
 export default function ConferenceDetailPage() {
   const { id } = useParams();
@@ -127,7 +128,7 @@ export default function ConferenceDetailPage() {
             <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 pt-2">
               <div className="flex items-center gap-1.5">
                 <Calendar className="w-4 h-4 text-slate-400" />
-                <span>Deadline: <strong>{conference.raw_deadline || conference.submission_deadline}</strong></span>
+                <span>Deadline: <strong>{deadlineLabel(conference, 'TBA')}</strong></span>
               </div>
               <div className="flex items-center gap-1.5">
                 <MapPin className="w-4 h-4 text-slate-400" />

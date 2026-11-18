@@ -85,3 +85,56 @@ test('ingest of a real pipeline ccfddl record (generated from the trimmed AAAI f
   const audit = await store.getCredibilityAudit(id);
   assert.equal(audit.checks.find((c) => c.id === 'rank_listing').status, 'pass');
 });
+
+test('pipeline record wins over the curated_seed record for the same conference + year; seed marked superseded', async () => {
+  const fs = await import('node:fs');
+  const { ingestRecords } = await import('../src/services/ingestService.js');
+  const { store, conferenceYearKey } = await import('../src/db/store.js');
+  // Real pipeline output generated from ccfddl (NeurIPS 2026, ACL 2026, CHI 2026); the seed list has NeurIPS 2026,
+  // ACL 2026 and "ACM CHI" 2026.
+  const recs = JSON.parse(fs.readFileSync(new URL('./fixtures_ccfddl_seed_overlap.json', import.meta.url)));
+  assert.equal(conferenceYearKey({ name: 'ACM CHI', edition: '2026' }), conferenceYearKey({ name: 'CHI', edition: '2026' }));
+  const before = await store.getConferences({});
+  const seedIds = before.filter((c) => c.data_origin === 'curated_seed' && ['neurips', 'acl', 'chi']
+    .some((n) => conferenceYearKey(c) === `${n}|2026`)).map((c) => c.id);
+  assert.equal(seedIds.length, 3, 'seed list contains NeurIPS, ACL and ACM CHI 2026');
+
+  const res = await ingestRecords(recs, { live: false });
+  assert.deepEqual(res.rejected, []);
+  assert.deepEqual([...res.superseded_seeds].sort(), [...seedIds].sort());
+
+  const after = await store.getConferences({});
+  for (const key of ['neurips|2026', 'acl|2026', 'chi|2026']) {
+    const shown = after.filter((c) => conferenceYearKey(c) === key);
+    assert.equal(shown.length, 1, `exactly one ${key} listed`);
+    assert.equal(shown[0].data_origin, 'pipeline');
+  }
+  for (const id of seedIds) {
+    const seed = await store.getConferenceById(id);
+    assert.equal(seed.superseded, true);
+    assert.match(seed.superseded_by, /-2026-[0-9a-f]{6}$/);
+  }
+  const acl = after.find((c) => conferenceYearKey(c) === 'acl|2026');
+  assert.equal(acl.location, 'San Diego, United States');       // ccfddl value, not the seed's
+  const neurips = after.find((c) => conferenceYearKey(c) === 'neurips|2026');
+  assert.equal(neurips.location, null);                        // multi-site place: left empty, not guessed
+});
+
+test('a deadline without a known time zone is a date, never a precise time', () => {
+  const base = { conference_id: 'd'.repeat(64), canonical_name: 'IEEE International Conference on Data Engineering', acronym: 'ICDE',
+    year: 2027, website_url: 'https://icde2027.github.io/', provenance: { primary_source: 'ccfddl', source_urls: [YAML_URL] } };
+  const pt = mapPipelineRecord({ ...base, dates: { submission_deadline: '2026-06-11', deadline_timezone: null } });   // ccfddl 'PT'
+  assert.equal(pt.deadline_precision, 'date');
+  assert.equal(pt.deadline_at, null);
+  assert.equal(pt.raw_deadline, '2026-06-11 (time zone not stated)');
+  assert.doesNotMatch(pt.raw_deadline, /\d{2}:\d{2}/);
+  const aoe = mapPipelineRecord({ ...base, dates: { submission_deadline: '2026-07-28T23:59-12:00', deadline_timezone: 'AoE' } });
+  assert.equal(aoe.deadline_precision, 'datetime');
+  assert.equal(aoe.deadline_at, '2026-07-28T23:59-12:00');
+  assert.equal(aoe.submission_deadline, '2026-07-28');
+  const none = mapPipelineRecord({ ...base, dates: {} });
+  assert.equal(none.deadline_precision, null); assert.equal(none.raw_deadline, null);
+  // the engine does not read deadlines at all: same audit with and without a time
+  const strip = (a) => JSON.stringify(a.checks.map((c) => [c.id, c.status]));
+  assert.equal(strip(evaluateConferenceCredibility(pt)), strip(evaluateConferenceCredibility(aoe)));
+});

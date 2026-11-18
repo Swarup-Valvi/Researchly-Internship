@@ -18,6 +18,7 @@ import {
   RotateCcw,
   Video
 } from 'lucide-react';
+import { deadlineLabel } from '../lib/deadline';
 
 export default function DiscoverPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -388,7 +389,7 @@ export default function DiscoverPage() {
 
                 <div className="p-3 bg-slate-50 rounded-xl text-xs text-slate-600 space-y-1">
                   <div><strong>Venue:</strong> {trackTarget.name} ({trackTarget.field})</div>
-                  <div><strong>Official Deadline:</strong> {trackTarget.raw_deadline || trackTarget.submission_deadline || 'Open / TBA'}</div>
+                  <div><strong>Official Deadline:</strong> {deadlineLabel(trackTarget, 'Open / TBA')}</div>
                 </div>
 
                 <div className="flex items-center justify-end gap-3 pt-2">

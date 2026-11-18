@@ -90,7 +90,9 @@ CREATE TABLE IF NOT EXISTS public.conferences (
     committee_summary JSONB,                        -- aggregate counts only; committee NAMES are never stored
     -- ccfddl dataset fields (migrations/003_ccfddl_fields.sql)
     dblp_key TEXT,
-    ranking_claims JSONB NOT NULL DEFAULT '[]'::JSONB
+    ranking_claims JSONB NOT NULL DEFAULT '[]'::JSONB,
+    deadline_at TIMESTAMPTZ,                        -- exact instant only when the time zone is known
+    deadline_precision TEXT                         -- 'datetime' | 'date' (a date is never shown as a time)
 );
 CREATE UNIQUE INDEX IF NOT EXISTS conferences_slug_key ON public.conferences (slug) WHERE slug IS NOT NULL;
 CREATE INDEX IF NOT EXISTS conferences_pipeline_conference_id_idx ON public.conferences (pipeline_conference_id);

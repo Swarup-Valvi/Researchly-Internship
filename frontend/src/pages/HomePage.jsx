@@ -34,6 +34,7 @@ import {
   Check,
   Compass
 } from 'lucide-react';
+import { daysLeft, deadlineLabel, deadlineMoment } from '../lib/deadline';
 
 export default function HomePage() {
   const { user, setIsAuthModalOpen, setIsOnboardingOpen } = useAuth();
@@ -169,7 +170,7 @@ export default function HomePage() {
   // Top upcoming deadlines
   const upcomingCountdowns = conferences
     .filter(c => c.submission_deadline)
-    .sort((a, b) => new Date(a.submission_deadline) - new Date(b.submission_deadline))
+    .sort((a, b) => deadlineMoment(a) - deadlineMoment(b))
     .slice(0, 5);
 
   // =========================================================================
@@ -348,9 +349,7 @@ export default function HomePage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {upcomingCountdowns.slice(0, 6).map(conf => {
-                const now = new Date();
-                const d = new Date(conf.submission_deadline);
-                const diffDays = Math.ceil((d - now) / (1000 * 60 * 60 * 24));
+                const diffDays = daysLeft(conf);
                 return (
                   <div key={conf.id || conf.slug} className="p-5 rounded-2xl border border-slate-200/80 bg-slate-50/50 hover:bg-white hover:shadow-md transition space-y-3">
                     <div className="flex items-center justify-between">
@@ -363,7 +362,7 @@ export default function HomePage() {
                     </div>
                     <p className="text-xs text-slate-500 line-clamp-1">{conf.title || conf.field}</p>
                     <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
-                      <span className="text-slate-600 font-medium">Due: {conf.raw_deadline || conf.submission_deadline}</span>
+                      <span className="text-slate-600 font-medium">Due: {deadlineLabel(conf)}</span>
                       <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                         {typeof conf.credibility_score === 'number' ? `${conf.credibility_score}/100` : 'Not assessed'} {conf.ranking}
                       </span>
@@ -812,9 +811,7 @@ export default function HomePage() {
 
             <div className="space-y-3">
               {upcomingCountdowns.map((conf) => {
-                const now = new Date();
-                const d = new Date(conf.submission_deadline);
-                const diffDays = Math.ceil((d - now) / (1000 * 60 * 60 * 24));
+                const diffDays = daysLeft(conf);
 
                 return (
                   <div
@@ -840,7 +837,7 @@ export default function HomePage() {
                     </div>
                     <p className="text-xs text-slate-500 truncate">{conf.title || conf.field}</p>
                     <div className="flex items-center justify-between pt-1.5 border-t border-slate-100/60 text-xs">
-                      <span className="text-slate-400">{conf.raw_deadline || conf.submission_deadline}</span>
+                      <span className="text-slate-400">{deadlineLabel(conf)}</span>
                       <span className="font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">
                         {typeof conf.credibility_score === 'number' ? `${conf.credibility_score}/100` : 'Not assessed'}
                       </span>

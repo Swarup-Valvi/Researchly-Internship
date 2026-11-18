@@ -36,6 +36,16 @@ const normalizedRealEvents = (config.enableCuratedSeed ? REAL_ACADEMIC_EVENTS : 
   };
 });
 
+/**
+ * Same conference + year, independent of publisher prefixes: "ACM CHI" 2026 == "CHI" 2026, "NeurIPS" 2026 == "neurips" 2026.
+ * Seed records use name = acronym, edition = year; pipeline records are mapped the same way (mapPipelineRecord).
+ */
+export function conferenceYearKey(c) {
+  const n = String(c?.name || '').toLowerCase().replace(/^(acm|ieee|usenix|aaai)\s+/, '').replace(/[^a-z0-9]/g, '');
+  const y = String(c?.edition || '').match(/\b(19|20)\d{2}\b/);
+  return n && y ? `${n}|${y[0]}` : null;
+}
+
 // Autonomous in-memory database state
 let conferences = [...normalizedRealEvents];
 // Audits are computed from evidence at startup (the old hand-written audits were removed).
@@ -86,8 +96,11 @@ export const store = {
       }
     }
 
-    // Local fallback with filtering
-    let results = [...conferences];
+    // Local fallback with filtering. A curated_seed record is hidden once a pipeline record exists for the same
+    // conference and year (the pipeline wins); the seed stays reachable by id, marked superseded.
+    const pipelineKeys = new Set(conferences.filter((c) => c.data_origin === 'pipeline').map(conferenceYearKey).filter(Boolean));
+    let results = conferences.filter((c) => !c.superseded &&
+      !(c.data_origin === 'curated_seed' && pipelineKeys.has(conferenceYearKey(c))));
 
     if (filters.search) {
       const q = filters.search.toLowerCase();
@@ -129,6 +142,24 @@ export const store = {
     }
 
     return results;
+  },
+
+  /**
+   * Mark in-memory curated_seed records for the same conference + year as superseded by `pipelineConf`.
+   * Seeds are local-only (never written to Supabase), so this never upserts them. Returns the ids marked.
+   */
+  supersedeSeeds(pipelineConf) {
+    const key = conferenceYearKey(pipelineConf);
+    if (!key || pipelineConf.data_origin !== 'pipeline') return [];
+    const marked = [];
+    for (const c of conferences) {
+      if (c.data_origin === 'curated_seed' && conferenceYearKey(c) === key) {
+        c.superseded = true;
+        c.superseded_by = pipelineConf.id;
+        marked.push(c.id);
+      }
+    }
+    return marked;
   },
 
   async getConferenceById(idOrSlug) {

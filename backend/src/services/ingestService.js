@@ -23,6 +23,7 @@ export function validatePipelineRecord(r) {
   return errs;
 }
 
+const hasOffset = (s) => typeof s === 'string' && /T\d{2}:\d{2}(:\d{2})?(Z|[+-]\d{2}:\d{2})$/.test(s);
 const isoDay = (s) => (typeof s === 'string' && s.length >= 10 ? s.slice(0, 10) : null);
 
 export function mapPipelineRecord(rec) {
@@ -42,7 +43,15 @@ export function mapPipelineRecord(rec) {
     field: rec.topics?.[0] || 'Unclassified',
     topics: rec.topics || [],
     submission_deadline: isoDay(d.submission_deadline),
-    raw_deadline: [d.submission_deadline, d.deadline_timezone].filter(Boolean).join(' ') || null,
+    // A deadline is a precise instant ONLY when the pipeline resolved its time zone (ISO with offset, e.g.
+    // "2026-07-28T23:59-12:00"). Otherwise it is a calendar date and is labelled as such, never shown as a time.
+    deadline_at: hasOffset(d.submission_deadline) ? d.submission_deadline : null,
+    deadline_precision: hasOffset(d.submission_deadline) ? 'datetime' : (d.submission_deadline ? 'date' : null),
+    raw_deadline: d.submission_deadline
+      ? (hasOffset(d.submission_deadline)
+        ? [d.submission_deadline, d.deadline_timezone].filter(Boolean).join(' ')
+        : `${isoDay(d.submission_deadline)} (time zone not stated)`)
+      : null,
     notification_date: isoDay(d.notification_date),
     camera_ready: isoDay(d.camera_ready),
     start_date: isoDay(d.conference_start),
@@ -101,7 +110,7 @@ export async function audit(conf, { live, committee, lookupOpts = {} }) {
 export async function ingestRecords(records, { live = config.enableLiveChecks, lookupOpts = {} } = {}) {
   if (!Array.isArray(records)) throw new Error('expected an array of conference records');
   if (records.length > MAX_RECORDS) throw new Error(`too many records (max ${MAX_RECORDS})`);
-  const result = { received: records.length, created: 0, updated: 0, deadline_changes: 0, rejected: [] };
+  const result = { received: records.length, created: 0, updated: 0, deadline_changes: 0, rejected: [], superseded_seeds: [] };
   for (const rec of records) {
     const errs = validatePipelineRecord(rec);
     if (errs.length) {
@@ -123,6 +132,7 @@ export async function ingestRecords(records, { live = config.enableLiveChecks, l
       result.deadline_changes++;
     }
     const saved = await store.saveConference({ ...(existing || {}), ...conf });
+    result.superseded_seeds.push(...store.supersedeSeeds(saved));   // pipeline wins over a hand-entered seed
     await audit(saved, { live, committee: committeeForAudit(rec), lookupOpts });
     existing ? result.updated++ : result.created++;
   }

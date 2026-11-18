@@ -6,6 +6,7 @@ import {
   CheckCircle2, XCircle, FileText, List, X, ArrowRight,
   Sparkles, Layers, BookOpen, Compass, ChevronRight, ChevronLeft
 } from 'lucide-react';
+import { deadlineLabel } from '../lib/deadline';
 
 const STAGES = [
   { id: 'Bookmarked', label: 'Bookmarked', dot: 'bg-slate-400', headerBg: 'bg-slate-100', headerText: 'text-slate-800', border: 'border-slate-200' },
@@ -451,7 +452,7 @@ export default function ApplicationsPage() {
                   <option value="">-- Choose from Verified Conference Catalog --</option>
                   {conferences.map(c => (
                     <option key={c.id || c.slug} value={c.id || c.slug}>
-                      {c.name} {c.edition} ({c.field}) — Due: {c.raw_deadline || c.submission_deadline || 'TBA'}
+                      {c.name} {c.edition} ({c.field}) — Due: {deadlineLabel(c, 'TBA')}
                     </option>
                   ))}
                 </select>

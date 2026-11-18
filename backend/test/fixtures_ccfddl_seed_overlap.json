@@ -1,0 +1,236 @@
+[
+ {
+  "conference_id": "05ee926c5301049053edbaad7ab2d56dd0071c782df6d44e24f2afb16425a7e9",
+  "canonical_name": "ACM Conference on Human Factors in Computing Systems",
+  "acronym": "CHI",
+  "year": 2026,
+  "edition": null,
+  "website_url": "https://chi2026.acm.org/",
+  "location": {
+   "city": "Barcelona",
+   "country": "Spain",
+   "venue": "Centre de Convencions Internacional de Barcelona",
+   "is_virtual": false
+  },
+  "dates": {
+   "conference_start": "2026-04-13",
+   "conference_end": "2026-04-17",
+   "submission_deadline": "2025-09-11T23:59-12:00",
+   "notification_date": null,
+   "camera_ready": null,
+   "deadline_timezone": "AoE"
+  },
+  "topics": [],
+  "tracks": [],
+  "publisher": null,
+  "sponsors": {
+   "claimed": [],
+   "verified_source": null
+  },
+  "indexing_claims": {
+   "scopus": "unknown",
+   "wos": "unknown",
+   "dblp": "unknown"
+  },
+  "ranking_claims": [
+   {
+    "system": "CORE",
+    "value": "A*",
+    "source_url": "https://github.com/ccfddl/ccf-deadlines/blob/main/conference/HI/chi.yml"
+   },
+   {
+    "system": "CCF",
+    "value": "A",
+    "source_url": "https://github.com/ccfddl/ccf-deadlines/blob/main/conference/HI/chi.yml"
+   }
+  ],
+  "fees": {
+   "currency": null,
+   "amount": null,
+   "notes": null
+  },
+  "claim_snippets": [],
+  "committee": [],
+  "dblp_key": "chi",
+  "proceedings_series": null,
+  "contact_email_domain": null,
+  "enrichment": null,
+  "provenance": {
+   "primary_source": "ccfddl",
+   "source_urls": [
+    "https://github.com/ccfddl/ccf-deadlines/blob/main/conference/HI/chi.yml"
+   ],
+   "scraped_at": "2026-11-18T12:21:27+00:00",
+   "extraction_method": "structured",
+   "confidence": 0.74,
+   "dataset_version": "ccfddl@1f3d38c742f0e8d3c8e13daf538ea0fbb29601d7",
+   "conflicts": []
+  },
+  "raw_snapshot_ref": "ccfddl@1f3d38c742f0e8d3c8e13daf538ea0fbb29601d7:conference/HI/chi.yml",
+  "dedup": {
+   "merged_from": [
+    "https://github.com/ccfddl/ccf-deadlines/blob/main/conference/HI/chi.yml"
+   ],
+   "canonical_source": "ccfddl"
+  }
+ },
+ {
+  "conference_id": "4549edb19bc130b18a8c05902aa931e640e20650dc2597a72de74507af3c2938",
+  "canonical_name": "Annual Meeting of the Association for Computational Linguistics",
+  "acronym": "ACL",
+  "year": 2026,
+  "edition": null,
+  "website_url": "https://2026.aclweb.org/",
+  "location": {
+   "city": "San Diego",
+   "country": "United States",
+   "venue": null,
+   "is_virtual": false
+  },
+  "dates": {
+   "conference_start": "2026-07-05",
+   "conference_end": "2026-07-07",
+   "submission_deadline": "2025-10-06T23:59-12:00",
+   "notification_date": null,
+   "camera_ready": null,
+   "deadline_timezone": "UTC-12"
+  },
+  "topics": [],
+  "tracks": [
+   {
+    "name": "ARR January cycle",
+    "deadline": "2026-01-05T23:59-12:00"
+   },
+   {
+    "name": "ARR commitment; reviewed papers only",
+    "deadline": "2026-03-14T23:59-12:00"
+   }
+  ],
+  "publisher": null,
+  "sponsors": {
+   "claimed": [],
+   "verified_source": null
+  },
+  "indexing_claims": {
+   "scopus": "unknown",
+   "wos": "unknown",
+   "dblp": "unknown"
+  },
+  "ranking_claims": [
+   {
+    "system": "CORE",
+    "value": "A*",
+    "source_url": "https://github.com/ccfddl/ccf-deadlines/blob/main/conference/AI/acl.yml"
+   },
+   {
+    "system": "CCF",
+    "value": "A",
+    "source_url": "https://github.com/ccfddl/ccf-deadlines/blob/main/conference/AI/acl.yml"
+   }
+  ],
+  "fees": {
+   "currency": null,
+   "amount": null,
+   "notes": null
+  },
+  "claim_snippets": [],
+  "committee": [],
+  "dblp_key": "acl",
+  "proceedings_series": null,
+  "contact_email_domain": null,
+  "enrichment": null,
+  "provenance": {
+   "primary_source": "ccfddl",
+   "source_urls": [
+    "https://github.com/ccfddl/ccf-deadlines/blob/main/conference/AI/acl.yml"
+   ],
+   "scraped_at": "2026-11-18T12:21:27+00:00",
+   "extraction_method": "structured",
+   "confidence": 0.74,
+   "dataset_version": "ccfddl@1f3d38c742f0e8d3c8e13daf538ea0fbb29601d7",
+   "conflicts": []
+  },
+  "raw_snapshot_ref": "ccfddl@1f3d38c742f0e8d3c8e13daf538ea0fbb29601d7:conference/AI/acl.yml",
+  "dedup": {
+   "merged_from": [
+    "https://github.com/ccfddl/ccf-deadlines/blob/main/conference/AI/acl.yml"
+   ],
+   "canonical_source": "ccfddl"
+  }
+ },
+ {
+  "conference_id": "a29fcaf8f099727871ba4bcc6218df6d41d54345adf2e405053f088ffb28e0d3",
+  "canonical_name": "Conference on Neural Information Processing Systems",
+  "acronym": "NeurIPS",
+  "year": 2026,
+  "edition": null,
+  "website_url": "https://neurips.cc/Conferences/2026",
+  "location": {
+   "city": null,
+   "country": null,
+   "venue": null,
+   "is_virtual": false
+  },
+  "dates": {
+   "conference_start": null,
+   "conference_end": null,
+   "submission_deadline": "2026-05-07T11:59+00:00",
+   "notification_date": null,
+   "camera_ready": null,
+   "deadline_timezone": "UTC+0"
+  },
+  "topics": [],
+  "tracks": [],
+  "publisher": null,
+  "sponsors": {
+   "claimed": [],
+   "verified_source": null
+  },
+  "indexing_claims": {
+   "scopus": "unknown",
+   "wos": "unknown",
+   "dblp": "unknown"
+  },
+  "ranking_claims": [
+   {
+    "system": "CORE",
+    "value": "A*",
+    "source_url": "https://github.com/ccfddl/ccf-deadlines/blob/main/conference/AI/nips.yml"
+   },
+   {
+    "system": "CCF",
+    "value": "A",
+    "source_url": "https://github.com/ccfddl/ccf-deadlines/blob/main/conference/AI/nips.yml"
+   }
+  ],
+  "fees": {
+   "currency": null,
+   "amount": null,
+   "notes": null
+  },
+  "claim_snippets": [],
+  "committee": [],
+  "dblp_key": "nips",
+  "proceedings_series": null,
+  "contact_email_domain": null,
+  "enrichment": null,
+  "provenance": {
+   "primary_source": "ccfddl",
+   "source_urls": [
+    "https://github.com/ccfddl/ccf-deadlines/blob/main/conference/AI/nips.yml"
+   ],
+   "scraped_at": "2026-11-18T12:21:27+00:00",
+   "extraction_method": "structured",
+   "confidence": 0.64,
+   "dataset_version": "ccfddl@1f3d38c742f0e8d3c8e13daf538ea0fbb29601d7",
+   "conflicts": []
+  },
+  "raw_snapshot_ref": "ccfddl@1f3d38c742f0e8d3c8e13daf538ea0fbb29601d7:conference/AI/nips.yml",
+  "dedup": {
+   "merged_from": [
+    "https://github.com/ccfddl/ccf-deadlines/blob/main/conference/AI/nips.yml"
+   ],
+   "canonical_source": "ccfddl"
+  }
+ }
+]

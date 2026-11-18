@@ -18,6 +18,7 @@ import {
   SlidersHorizontal,
   BookmarkPlus
 } from 'lucide-react';
+import { deadlineLabel } from '../lib/deadline';
 
 const SAMPLES = [
   {
@@ -282,7 +283,7 @@ export default function AiMatcherPage() {
                         <div className="flex items-center gap-4">
                           <span className="flex items-center gap-1">
                             <Clock className="w-3.5 h-3.5 text-blue-500" />
-                            <strong>Deadline:</strong> {item.raw_deadline || item.submission_deadline}
+                            <strong>Deadline:</strong> {deadlineLabel(item, 'TBA')}
                           </span>
                           <span className="flex items-center gap-1">
                             <MapPin className="w-3.5 h-3.5 text-rose-500" />

@@ -120,3 +120,41 @@ def test_cli_dry_run_over_fixture_is_schema_valid(tmp_path):
     s2 = run.run_pipeline(a)                                                        # same dataset: skipped, output kept
     assert s2["raw_records"] == 0 and s2["output_records"] == s["output_records"]
 
+
+def test_attendance_note_is_not_part_of_the_country():
+    from normalizer.records import parse_location
+    loc = parse_location("Vienna, Austria (Hybrid)", None)                     # real ccfddl place string (ACL 2025)
+    assert (loc.city, loc.country) == ("Vienna", "Austria")
+    assert parse_location("San Diego, California, United States (Hybrid)", None).country == "United States"
+
+
+def loc(text):
+    from normalizer.records import parse_location
+    l = parse_location(text, None)
+    return (l.venue, l.city, l.country)
+
+
+def test_location_alt_2026_venue_city_country():
+    assert loc("Fields Institute, Toronto, Canada") == ("Fields Institute", "Toronto", "Canada")      # real ccfddl ALT 2026
+
+
+def test_location_aaai_2026_lone_venue_has_no_city_or_country():
+    assert loc("Singapore EXPO") == ("Singapore EXPO", None, None)                                     # real ccfddl AAAI 2026
+
+
+def test_location_rules():
+    assert loc("COEX Convention Center, Seoul, South Korea") == ("COEX Convention Center", "Seoul", "South Korea")
+    assert loc("Lisbon, Portugal") == (None, "Lisbon", "Portugal")                                     # 2 parts: city, country
+    assert loc("Example University, Portugal") == ("Example University", None, "Portugal")             # 2 parts with venue word
+    assert loc("Detroit, Michigan, USA") == (None, "Detroit", "United States")                         # state is not the city
+    assert loc("PHILADELPHIA, PENNSYLVANIA, USA") == (None, "PHILADELPHIA", "United States")
+    assert loc("Montréal, Québec, Canada") == (None, "Montréal", "Canada")
+    assert loc("Paris") == (None, "Paris", None)                                                       # country not stated: empty
+    assert loc("Atlanta, Georgia") == (None, "Atlanta", None)                                          # region is not a country
+    assert loc("Sydney, Australia; Atlanta, USA; Paris, France") == (None, None, None)                 # real NeurIPS 2026: multi-site
+
+
+def test_ccfddl_records_get_venue_city_country(env):
+    _, recs = scrape(env)
+    c, _ = normalize(by(recs, "AAAI", 2026))
+    assert (c.location.venue, c.location.city, c.location.country) == ("Singapore EXPO", None, None)

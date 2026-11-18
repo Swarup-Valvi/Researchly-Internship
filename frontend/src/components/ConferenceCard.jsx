@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { daysLeft, deadlineLabel } from '../lib/deadline';
 import {
   Calendar,
   MapPin,
@@ -54,16 +55,14 @@ export default function ConferenceCard({ conference, onTrack }) {
     );
   };
 
-  const getDeadlinePill = (deadlineStr) => {
-    if (!deadlineStr) return (
+  const getDeadlinePill = (deadlineConf) => {
+    if (!deadlineConf?.submission_deadline) return (
       <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
         <Video className="w-3 h-3 text-indigo-500" />
         Open Stream
       </span>
     );
-    const now = new Date();
-    const d = new Date(deadlineStr);
-    const diffDays = Math.ceil((d - now) / (1000 * 60 * 60 * 24));
+    const diffDays = daysLeft(deadlineConf);
 
     if (diffDays < 0) {
       return (
@@ -103,7 +102,7 @@ export default function ConferenceCard({ conference, onTrack }) {
                 Extended
               </span>
             )}
-            {getDeadlinePill(conference.submission_deadline)}
+            {getDeadlinePill(conference)}
           </div>
         </div>
 
@@ -136,7 +135,7 @@ export default function ConferenceCard({ conference, onTrack }) {
           <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4 text-blue-500 shrink-0" />
             <span className="truncate">
-              <strong className="text-slate-800 font-semibold">{isWebinar ? 'Schedule:' : 'Deadline:'}</strong> {conference.raw_deadline || conference.submission_deadline || 'TBA'}
+              <strong className="text-slate-800 font-semibold">{isWebinar ? 'Schedule:' : 'Deadline:'}</strong> {deadlineLabel(conference)}
             </span>
           </div>
           <div className="flex items-center gap-2">

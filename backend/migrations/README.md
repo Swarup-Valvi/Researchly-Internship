@@ -8,7 +8,7 @@ created from an older `schema.sql`.
 |---|---|
 | `001_pipeline_fields.sql` | Adds the pipeline/provenance columns written by `mapPipelineRecord` (and the aggregate `committee_summary`) to `public.conferences`; removes the invented defaults `credibility_score 90` and `ranking 'Core A*'` (both now nullable, no default); sets `risk_level` default to `'Not assessed'`. |
 | `002_credibility_audits.sql` | Makes `credibility_audits.overall_score` and all nine dimension scores nullable with no default (no more 85-95 defaults), and adds `engine_version`, `coverage`, `checks` (jsonb) and `limitations` (jsonb). |
-| `003_ccfddl_fields.sql` | Adds `conferences.dblp_key` (text) and `conferences.ranking_claims` (jsonb, default `[]`) for the ccfddl dataset source. |
+| `003_ccfddl_fields.sql` | Adds `conferences.dblp_key` (text), `ranking_claims` (jsonb, default `[]`), `deadline_at` (timestamptz, set only when the deadline's time zone is known) and `deadline_precision` (`datetime`/`date`). |
 
 ## How to apply
 
@@ -54,7 +54,7 @@ where table_schema = 'public' and table_name = 'credibility_audits'
 
 -- 003: both columns exist
 select column_name, data_type, column_default from information_schema.columns
-where table_schema = 'public' and table_name = 'conferences' and column_name in ('dblp_key', 'ranking_claims');
+where table_schema = 'public' and table_name = 'conferences' and column_name in ('dblp_key', 'ranking_claims', 'deadline_at', 'deadline_precision');
 
 -- RLS is unchanged (both tables still have it enabled):
 select relname, relrowsecurity from pg_class where relname in ('conferences', 'credibility_audits');
