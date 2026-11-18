@@ -102,6 +102,25 @@ function committeeCheck(c, pageUrl, now) {
   return { ...notChecked(id, 'tpc', label, `Inconclusive or too few lookups: ${summary}`), evidence };
 }
 
+const RANK_SYSTEMS = ['CORE', 'CCF'];
+const COMMUNITY_DATASET_RX = /^https:\/\/github\.com\/ccfddl\/ccf-deadlines\//;
+
+/**
+ * CORE/CCF rank as listed in a community-maintained dataset (ccfddl). A listing is evidence that the community
+ * dataset records the rank; it is NOT verified against CORE's/CCF's own lists. Absent -> not_checked (neutral).
+ */
+function rankListingCheck(conf, now) {
+  const label = 'CORE/CCF rank listed in a community dataset';
+  const claims = (conf.ranking_claims || []).filter((r) => r && RANK_SYSTEMS.includes(String(r.system).toUpperCase())
+    && r.value && COMMUNITY_DATASET_RX.test(String(r.source_url || '')));
+  if (!claims.length) return notChecked('rank_listing', 'indexing', label, 'No CORE/CCF rank listed in the community dataset.');
+  const listed = claims.map((r) => `${String(r.system).toUpperCase()} ${r.value}`).join(', ');
+  return check('rank_listing', 'indexing', label, 'pass',
+    `${listed}: listed in a community-maintained dataset, not verified against CORE's own site` +
+    (claims.some((r) => String(r.system).toUpperCase() === 'CCF') ? " or CCF's own list." : '.'),
+    ev('community_dataset', claims[0].source_url, listed, conf.scraped_at || now));
+}
+
 export function evaluateConferenceCredibility(conf, lookups = {}) {
   const now = new Date().toISOString();
   const checks = [];
@@ -181,6 +200,7 @@ export function evaluateConferenceCredibility(conf, lookups = {}) {
     checks.push(notChecked('dblp_presence', 'indexing', 'Venue series present in DBLP',
       dblp && dblp.error ? `Lookup failed: ${dblp.error}` : 'Live DBLP lookup not run.'));
   }
+  checks.push(rankListingCheck(conf, now));
   const ic = conf.indexing_claims || {};
   const claimedIdx = ['scopus', 'wos', 'dblp'].filter((k) => ic[k] === 'claimed');
   checks.push(notChecked('scopus_wos_verification', 'indexing', 'Scopus / Web of Science claims',

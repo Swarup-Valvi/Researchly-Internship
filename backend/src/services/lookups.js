@@ -20,17 +20,26 @@ async function getJson(url, { fetchImpl = fetch, timeoutMs = 6000 } = {}) {
   }
 }
 
-/** DBLP venue search. found=true only if a hit's acronym or venue name equals the query (case-insensitive). */
+/**
+ * DBLP venue search.
+ * - With opts.dblpKey (e.g. "aaai" from the ccfddl dataset): found=true only if a hit's URL is exactly
+ *   dblp.org/db/conf/<key>/ (or /db/journals/<key>/). The key is matched, never assumed to exist.
+ * - Otherwise (name search): found=true only if a hit's acronym or venue name equals the query (case-insensitive).
+ */
 export async function dblpVenueLookup(acronym, opts = {}) {
-  if (!acronym) return { ok: false, error: 'no acronym' };
-  const url = `https://dblp.org/search/venue/api?q=${encodeURIComponent(acronym)}&format=json&h=10`;
+  const key = typeof opts.dblpKey === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(opts.dblpKey) ? opts.dblpKey : null;
+  const query = key || acronym;
+  if (!query) return { ok: false, error: 'no acronym' };
+  const url = `https://dblp.org/search/venue/api?q=${encodeURIComponent(query)}&format=json&h=10`;
   try {
     const data = await getJson(url, opts);
     let hits = data?.result?.hits?.hit ?? [];
     if (!Array.isArray(hits)) hits = [hits];
-    const q = acronym.trim().toLowerCase();
-    const match = hits.map((h) => h.info || {}).find((i) =>
-      [i.acronym, i.venue].filter(Boolean).some((v) => String(v).trim().toLowerCase() === q));
+    const q = query.trim().toLowerCase();
+    const keyRx = key ? new RegExp(`^https?://dblp\\.org/db/(conf|journals)/${key.toLowerCase()}/?$`) : null;
+    const match = hits.map((h) => h.info || {}).find((i) => (keyRx
+      ? keyRx.test(String(i.url || '').toLowerCase())
+      : [i.acronym, i.venue].filter(Boolean).some((v) => String(v).trim().toLowerCase() === q)));
     return {
       ok: true, found: !!match, matched: match ? (match.venue || match.acronym) : null,
       evidence_url: match?.url || url, checked_at: new Date().toISOString()
@@ -204,7 +213,7 @@ export async function committeeLookup(committee, opts = {}) {
 export async function gatherLookups(conf, opts = {}) {
   const mailto = opts.mailto ?? config.openAlexMailto;
   const [dblp, rdap] = await Promise.all([
-    dblpVenueLookup(conf.acronym || conf.name, opts),
+    dblpVenueLookup(conf.acronym || conf.name, { ...opts, dblpKey: conf.dblp_key }),
     conf.official_url ? rdapDomainAge(conf.official_url, opts) : Promise.resolve({ ok: false, error: 'no website' })
   ]);
   if (opts.committee === undefined) return { dblp, rdap };

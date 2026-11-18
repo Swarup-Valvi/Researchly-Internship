@@ -1,0 +1,75 @@
+{
+ "conference_id": "372751d55b3708b40de2ecfc851c985271d074d0c0e253ddcfe37c5665391d95",
+ "canonical_name": "AAAI Conference on Artificial Intelligence",
+ "acronym": "AAAI",
+ "year": 2027,
+ "edition": null,
+ "website_url": "https://aaai.org/conference/aaai/aaai-27/",
+ "location": {
+  "city": "Montréal",
+  "country": "Canada",
+  "venue": null,
+  "is_virtual": false
+ },
+ "dates": {
+  "conference_start": "2027-02-16",
+  "conference_end": "2027-02-23",
+  "submission_deadline": "2026-07-28T23:59-12:00",
+  "notification_date": null,
+  "camera_ready": null,
+  "deadline_timezone": "UTC-12"
+ },
+ "topics": [],
+ "tracks": [],
+ "publisher": null,
+ "sponsors": {
+  "claimed": [],
+  "verified_source": null
+ },
+ "indexing_claims": {
+  "scopus": "unknown",
+  "wos": "unknown",
+  "dblp": "unknown"
+ },
+ "ranking_claims": [
+  {
+   "system": "CORE",
+   "value": "A*",
+   "source_url": "https://github.com/ccfddl/ccf-deadlines/blob/main/conference/AI/aaai.yml"
+  },
+  {
+   "system": "CCF",
+   "value": "A",
+   "source_url": "https://github.com/ccfddl/ccf-deadlines/blob/main/conference/AI/aaai.yml"
+  }
+ ],
+ "fees": {
+  "currency": null,
+  "amount": null,
+  "notes": null
+ },
+ "claim_snippets": [],
+ "committee": [],
+ "dblp_key": "aaai",
+ "proceedings_series": null,
+ "contact_email_domain": null,
+ "enrichment": null,
+ "provenance": {
+  "primary_source": "ccfddl",
+  "source_urls": [
+   "https://github.com/ccfddl/ccf-deadlines/blob/main/conference/AI/aaai.yml"
+  ],
+  "scraped_at": "2026-11-18T12:13:29+00:00",
+  "extraction_method": "structured",
+  "confidence": 0.74,
+  "dataset_version": "ccfddl@sha256-5bb9a14fab767ddd835f859b823927853758279b",
+  "conflicts": []
+ },
+ "raw_snapshot_ref": "ccfddl@sha256-5bb9a14fab767ddd835f859b823927853758279b:conference/AI/aaai.yml",
+ "dedup": {
+  "merged_from": [
+   "https://github.com/ccfddl/ccf-deadlines/blob/main/conference/AI/aaai.yml"
+  ],
+  "canonical_source": "ccfddl"
+ }
+}

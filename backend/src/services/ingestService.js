@@ -70,6 +70,12 @@ export function mapPipelineRecord(rec) {
     sponsors_claimed: rec.sponsors?.claimed || [],
     sponsors_verified_source: rec.sponsors?.verified_source || null,
     claim_snippets: rec.claim_snippets || [],
+    // ccfddl / structured-source fields (additive; see migrations/003)
+    dblp_key: typeof rec.dblp_key === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(rec.dblp_key) ? rec.dblp_key : null,
+    ranking_claims: Array.isArray(rec.ranking_claims)
+      ? rec.ranking_claims.filter((r) => r && r.system && r.value && r.source_url)
+        .map((r) => ({ system: String(r.system), value: String(r.value), source_url: String(r.source_url) }))
+      : [],
     // NOTE: rec.committee is deliberately NOT mapped: member names never reach the store/DB/API.
     // Use committeeForAudit(rec) to pass it transiently to the audit.
     pipeline_conference_id: rec.conference_id
