@@ -38,7 +38,12 @@ def test_rows_need_valid_label_and_source(tmp_path):
     assert rows == [] and len(problems) == 2
 
 
+BACKEND_DEPS = ROOT.parent / "backend" / "node_modules"
+
+
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not installed")
+@pytest.mark.skipif(not BACKEND_DEPS.is_dir(),
+                    reason="backend/node_modules is missing: run `npm ci` in backend/ first (setup step, not a code bug)")
 def test_end_to_end_against_fictional_sample(tmp_path, capsys):
     p = tmp_path / "l.csv"
     p.write_text("conference,url,label,label_source,notes\n"

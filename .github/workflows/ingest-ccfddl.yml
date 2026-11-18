@@ -25,14 +25,17 @@ jobs:
           cache: pip
           cache-dependency-path: researchly_pipeline/requirements.txt
       - run: pip install -r researchly_pipeline/requirements.txt
-      - run: python -m pytest -q
-        working-directory: researchly_pipeline
+      # Backend deps first: researchly_pipeline/tests/test_eval_score.py runs the backend engine through node.
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: backend/package-lock.json
-      - run: npm ci && npm test
+      - run: npm ci
+        working-directory: backend
+      - run: python -m pytest -q
+        working-directory: researchly_pipeline
+      - run: npm test
         working-directory: backend
 
   ingest:
