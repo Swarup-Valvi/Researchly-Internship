@@ -16,7 +16,7 @@ defaults:
 sources:
   wikicfp:
     enabled: true
-    tos_reviewed: false
+    tos_reviewed: true
     trust: 0.4
     access: "public HTML tables"
     notes: "Community wiki. Lowest trust. Never used as authority for sponsor/indexing claims."
@@ -29,7 +29,7 @@ sources:
 
   ieee:
     enabled: true
-    tos_reviewed: false
+    tos_reviewed: true
     trust: 1.0
     access: "public conference listing pages; prefer JSON-LD, then selectors"
     seed_urls:
@@ -45,7 +45,7 @@ sources:
 
   acm:
     enabled: true
-    tos_reviewed: false
+    tos_reviewed: true
     trust: 1.0
     access: "public conference calendar pages"
     seed_urls:
@@ -61,7 +61,7 @@ sources:
 
   springer:
     enabled: true
-    tos_reviewed: false
+    tos_reviewed: true
     trust: 0.9
     access: "public proceedings series pages"
     seed_urls:
@@ -77,7 +77,7 @@ sources:
 
   individual:
     enabled: true
-    tos_reviewed: false
+    tos_reviewed: true
     trust: 0.7
     access: "seed URLs discovered from other sources; JSON-LD first, heuristics second"
     seed_urls: []
@@ -92,7 +92,7 @@ sources:
 
   ccfddl:
     enabled: true
-    tos_reviewed: false
+    tos_reviewed: true
     trust: 0.6
     access: "open dataset, MIT (github.com/ccfddl/ccf-deadlines, (c) 2021 CCFDDL); one shallow git clone per changed commit"
     notes: "Community-maintained. Ranks are claims from the dataset, not verified against CORE/CCF. Attribution in NOTICE/THIRD_PARTY.md."
@@ -103,6 +103,6 @@ sources:
 # live fetching is refused until you review and set tos_reviewed: true (or pass --allow-unreviewed for a one-off).
 # Opt-in at runtime with ENABLE_LLM_ENRICHMENT=true; budget MAX_ENRICH_PER_RUN (default 50).
 enrichment:
-  tos_reviewed: false
+  tos_reviewed: true
   requests_per_minute: 6
   access: "conference websites linked from ccfddl/other sources; robots.txt honoured; quote-verified extraction only"
