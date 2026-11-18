@@ -17,6 +17,8 @@ test('pipeline sample validates and maps to the store shape with provenance', ()
   assert.equal(m.data_origin, 'pipeline');
   assert.equal(m.submission_deadline, '2027-01-20');
   assert.equal(m.location, 'Lisbon, Portugal');
+  assert.equal(m.city, 'Lisbon');
+  assert.equal(m.country, 'Portugal');
   assert.ok(m.source_urls.length >= 2);
   assert.equal(m.sponsors_verified_source, 'https://www.ieee.org/conferences/');
 });

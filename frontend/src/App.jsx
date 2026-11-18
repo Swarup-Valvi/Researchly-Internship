@@ -34,9 +34,10 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <div className="min-h-screen flex flex-col bg-gray-50 text-slate-800">
+        <div className="min-h-screen flex flex-col bg-canvas text-ink">
+          <a href="#main" className="skip-link">Skip to content</a>
           <Navbar />
-          <div className="flex-1">
+          <main id="main" tabIndex={-1} className="flex-1 focus:outline-none">
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/discover" element={<DiscoverPage />} />
@@ -48,7 +49,7 @@ export default function App() {
               <Route path="/communities" element={<CommunitiesPage />} />
               <Route path="/profile" element={<ProfilePage />} />
             </Routes>
-          </div>
+          </main>
           <Footer />
           <ModalsWrapper />
         </div>

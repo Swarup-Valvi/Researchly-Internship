@@ -28,26 +28,11 @@ test('rank_listing: not_checked when absent or not from the community dataset', 
   assert.equal(byId(legacy, 'rank_listing').status, 'not_checked');
 });
 
-test('DBLP lookup uses dblp_key when present: matched by exact /db/conf/<key>/ URL', async () => {
-  const calls = [];
-  const body = { result: { hits: { hit: [
-    { info: { venue: 'AAAI Fall Symposia', url: 'https://dblp.org/db/conf/aaaifs/' } },
-    { info: { venue: 'AAAI Conference on Artificial Intelligence', acronym: 'AAAI', url: 'https://dblp.org/db/conf/aaai/' } }] } } };
-  const fetchImpl = async (url) => { calls.push(url); return json(body)(url); };
-  const r = await dblpVenueLookup('Some Long Name', { fetchImpl, dblpKey: 'aaai' });
-  assert.equal(r.ok, true); assert.equal(r.found, true); assert.equal(r.evidence_url, 'https://dblp.org/db/conf/aaai/');
-  assert.match(calls[0], /q=aaai&/);
-  const miss = await dblpVenueLookup('X', { fetchImpl: json({ result: { hits: { hit: [{ info: { url: 'https://dblp.org/db/conf/aaaifs/' } }] } } }), dblpKey: 'aaai' });
-  assert.equal(miss.found, false);                                                            // prefix match is not a match
-  const byName = await dblpVenueLookup('AAAI', { fetchImpl: json(body) });                   // no key: old name search
-  assert.equal(byName.found, true);
-});
-
-test('gatherLookups passes the record dblp_key to the DBLP lookup', async () => {
+test('gatherLookups passes the record dblp_key to the DBLP SPARQL lookup', async () => {
   const calls = [];
   const fetchImpl = async (url) => { calls.push(url); return { ok: false, status: 503, json: async () => ({}) }; };
   await gatherLookups({ name: 'AAAI Conference on Artificial Intelligence', acronym: 'AAAI', dblp_key: 'aaai' }, { fetchImpl, mailto: '' });
-  assert.ok(calls.some((u) => u.includes('dblp.org/search/venue/api?q=aaai&')));
+  assert.ok(calls.some((u) => u.startsWith('https://sparql.dblp.org/sparql?') && decodeURIComponent(u).includes('<https://dblp.org/streams/conf/aaai>')));
 });
 
 test('mapPipelineRecord passes dblp_key and ranking_claims through (validated)', () => {
@@ -118,6 +103,7 @@ test('pipeline record wins over the curated_seed record for the same conference 
   assert.equal(acl.location, 'San Diego, United States');       // ccfddl value, not the seed's
   const neurips = after.find((c) => conferenceYearKey(c) === 'neurips|2026');
   assert.equal(neurips.location, null);                        // multi-site place: left empty, not guessed
+  assert.equal(neurips.country, null);
 });
 
 test('a deadline without a known time zone is a date, never a precise time', () => {

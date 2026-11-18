@@ -85,7 +85,7 @@ export default function AiMatcherPage() {
   return (
     <div className="max-w-[1700px] w-full mx-auto px-6 lg:px-12 py-8 space-y-6">
       {/* Page Header */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 p-6 sm:p-8 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-surface rounded-2xl border border-slate-200/90 p-6 sm:p-8 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <div className="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center">
@@ -120,7 +120,7 @@ export default function AiMatcherPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
         {/* ---------------- LEFT PANE: Paper Input Form (5 cols) ---------------- */}
-        <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200/90 p-6 shadow-sm h-fit space-y-4">
+        <div className="lg:col-span-5 bg-surface rounded-2xl border border-slate-200/90 p-6 shadow-sm h-fit space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
               <FileText className="w-4 h-4 text-blue-600" />
@@ -170,7 +170,7 @@ export default function AiMatcherPage() {
                 <select
                   value={region}
                   onChange={(e) => setRegion(e.target.value)}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white"
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-surface"
                 >
                   <option value="All">Global / Any Region</option>
                   <option value="USA">North America</option>
@@ -184,7 +184,7 @@ export default function AiMatcherPage() {
                 <select
                   value={format}
                   onChange={(e) => setFormat(e.target.value)}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white"
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-surface"
                 >
                   <option value="All">Any Format</option>
                   <option value="In-Person">In-Person</option>
@@ -197,7 +197,7 @@ export default function AiMatcherPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white rounded-xl font-semibold shadow-sm flex items-center justify-center gap-2 transition disabled:opacity-50 cursor-pointer"
+              className="bg-accent hover:bg-accent-hover w-full py-3 text-white rounded-xl font-semibold shadow-sm flex items-center justify-center gap-2 transition disabled:opacity-50 cursor-pointer"
             >
               <Wand2 className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               <span>{loading ? 'Computing Semantic Fit...' : 'Find Recommended Venues'}</span>
@@ -208,7 +208,7 @@ export default function AiMatcherPage() {
         {/* ---------------- RIGHT PANE: Results Grouped by Deadlines (7 cols) ---------------- */}
         <div className="lg:col-span-7 space-y-5">
           {!results ? (
-            <div className="bg-white rounded-2xl border border-slate-200/90 p-12 text-center space-y-3 shadow-sm">
+            <div className="bg-surface rounded-2xl border border-slate-200/90 p-12 text-center space-y-3 shadow-sm">
               <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto">
                 <Sparkles className="w-7 h-7" />
               </div>
@@ -220,7 +220,7 @@ export default function AiMatcherPage() {
           ) : (
             <div className="space-y-5">
               {/* Top Venue Banner */}
-              <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-slate-900 rounded-2xl p-5 text-white shadow-sm flex items-center justify-between">
+              <div className="bg-slate-900 rounded-2xl p-5 text-white shadow-sm flex items-center justify-between">
                 <div>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-blue-200">
                     Top Recommended Venue
@@ -228,7 +228,7 @@ export default function AiMatcherPage() {
                   <h3 className="text-xl font-black mt-0.5">{results.summary?.top_venue}</h3>
                   <p className="text-xs text-blue-100 mt-0.5">High-impact fit for your manuscript topic vocabulary</p>
                 </div>
-                <div className="text-right bg-white/10 px-4 py-2 rounded-xl backdrop-blur-xs">
+                <div className="text-right bg-surface/10 px-4 py-2 rounded-xl backdrop-blur-xs">
                   <span className="text-[10px] uppercase font-bold text-blue-200">Fit Score</span>
                   <div className="text-2xl font-black font-mono">{results.summary?.top_score}%</div>
                 </div>
@@ -247,7 +247,7 @@ export default function AiMatcherPage() {
                   {results.open_upcoming?.map((item) => (
                     <div
                       key={item.conference_id}
-                      className="bg-white rounded-2xl border border-slate-200/90 p-5 hover:border-blue-300 transition shadow-sm space-y-3"
+                      className="bg-surface rounded-2xl border border-slate-200/90 p-5 hover:border-blue-300 transition shadow-sm space-y-3"
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div>
@@ -261,7 +261,7 @@ export default function AiMatcherPage() {
                               {item.ranking}
                             </span>
                             <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                              Audit: {typeof item.credibility_score === 'number' ? `${item.credibility_score}/100` : 'not assessed'}
+                              Audit: {typeof item.credibility_score === 'number' ? `${item.credibility_score}/100` : 'not enough evidence'}
                             </span>
                           </div>
                           <p className="text-xs text-slate-500 mt-1">{item.title}</p>

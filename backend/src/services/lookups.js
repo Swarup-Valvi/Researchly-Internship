@@ -21,28 +21,31 @@ async function getJson(url, { fetchImpl = fetch, timeoutMs = 6000 } = {}) {
 }
 
 /**
- * DBLP venue search.
- * - With opts.dblpKey (e.g. "aaai" from the ccfddl dataset): found=true only if a hit's URL is exactly
- *   dblp.org/db/conf/<key>/ (or /db/journals/<key>/). The key is matched, never assumed to exist.
- * - Otherwise (name search): found=true only if a hit's acronym or venue name equals the query (case-insensitive).
+ * DBLP by venue key (e.g. "aaai" from the ccfddl dataset) via the DBLP SPARQL endpoint (sparql.dblp.org; robots.txt:
+ * Allow /sparql, Crawl-delay 10). dblp.org/search/venue is DISALLOWED by dblp's robots.txt and is not used.
+ * found=true only if the stream conf/<key> exists and has publications. Without a key: not looked up (no name guessing).
  */
+export function dblpSparqlQuery(key) {
+  const s = `<https://dblp.org/streams/conf/${key}>`;
+  return 'PREFIX dblp: <https://dblp.org/rdf/schema#> ' +
+    'SELECT ?title (COUNT(DISTINCT ?y) AS ?years) (MIN(?y) AS ?first) (MAX(?y) AS ?last) WHERE { ' +
+    `OPTIONAL { ${s} dblp:streamTitle ?title } OPTIONAL { ?p dblp:publishedInStream ${s} ; dblp:yearOfPublication ?y . } } GROUP BY ?title`;
+}
+
 export async function dblpVenueLookup(acronym, opts = {}) {
   const key = typeof opts.dblpKey === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(opts.dblpKey) ? opts.dblpKey : null;
-  const query = key || acronym;
-  if (!query) return { ok: false, error: 'no acronym' };
-  const url = `https://dblp.org/search/venue/api?q=${encodeURIComponent(query)}&format=json&h=10`;
+  if (!key) return { ok: false, error: 'no dblp_key' };
+  const url = `https://sparql.dblp.org/sparql?query=${encodeURIComponent(dblpSparqlQuery(key))}`;
   try {
     const data = await getJson(url, opts);
-    let hits = data?.result?.hits?.hit ?? [];
-    if (!Array.isArray(hits)) hits = [hits];
-    const q = query.trim().toLowerCase();
-    const keyRx = key ? new RegExp(`^https?://dblp\\.org/db/(conf|journals)/${key.toLowerCase()}/?$`) : null;
-    const match = hits.map((h) => h.info || {}).find((i) => (keyRx
-      ? keyRx.test(String(i.url || '').toLowerCase())
-      : [i.acronym, i.venue].filter(Boolean).some((v) => String(v).trim().toLowerCase() === q)));
+    const b = data?.results?.bindings?.[0] || {};
+    const v = (k) => b[k]?.value;
+    const years = parseInt(v('years') || '0', 10);
+    const found = Boolean(v('title')) && years > 0;
     return {
-      ok: true, found: !!match, matched: match ? (match.venue || match.acronym) : null,
-      evidence_url: match?.url || url, checked_at: new Date().toISOString()
+      ok: true, found, matched: v('title') || null, years_with_publications: years,
+      first_year: v('first') ? parseInt(v('first'), 10) : null, last_year: v('last') ? parseInt(v('last'), 10) : null,
+      evidence_url: `https://dblp.org/db/conf/${key}/`, checked_at: new Date().toISOString()
     };
   } catch (err) {
     return { ok: false, error: err.name === 'AbortError' ? 'timeout' : err.message };

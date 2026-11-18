@@ -92,7 +92,12 @@ CREATE TABLE IF NOT EXISTS public.conferences (
     dblp_key TEXT,
     ranking_claims JSONB NOT NULL DEFAULT '[]'::JSONB,
     deadline_at TIMESTAMPTZ,                        -- exact instant only when the time zone is known
-    deadline_precision TEXT                         -- 'datetime' | 'date' (a date is never shown as a time)
+    deadline_precision TEXT,                        -- 'datetime' | 'date' (a date is never shown as a time)
+    -- location fields (migrations/004_location_fields.sql)
+    city TEXT,                                      -- NULL when not stated or multi-site
+    country TEXT,                                   -- NULL when not stated; never guessed
+    -- pipeline evidence for the credibility engine (migrations/005_evidence.sql); no committee names
+    evidence JSONB NOT NULL DEFAULT '{}'::JSONB
 );
 CREATE UNIQUE INDEX IF NOT EXISTS conferences_slug_key ON public.conferences (slug) WHERE slug IS NOT NULL;
 CREATE INDEX IF NOT EXISTS conferences_pipeline_conference_id_idx ON public.conferences (pipeline_conference_id);
@@ -114,6 +119,7 @@ CREATE TABLE IF NOT EXISTS public.credibility_audits (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     conference_id TEXT UNIQUE REFERENCES public.conferences(id) ON DELETE CASCADE,
     overall_score INTEGER,                          -- NULL = not enough evidence (migrations/002)
+    provisional_score INTEGER,                      -- set only when coverage < 0.30; never a result (migrations/006)
     risk_level TEXT NOT NULL,
     -- dimension scores: NULL when no check in that dimension ran; never defaulted
     domain_score INTEGER,

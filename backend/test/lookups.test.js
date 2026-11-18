@@ -5,18 +5,25 @@ import { evaluateConferenceCredibility } from '../src/services/credibilityEngine
 
 const json = (body, status = 200) => async () => ({ ok: status < 400, status, json: async () => body });
 
-test('DBLP: found only on exact acronym/venue match', async () => {
-  const body = { result: { hits: { hit: [{ info: { venue: 'ICMLA', url: 'https://dblp.org/db/conf/icmla/' } }, { info: { venue: 'ICML', acronym: 'ICML', url: 'https://dblp.org/db/conf/icml/' } }] } } };
-  const r = await dblpVenueLookup('icml', { fetchImpl: json(body) });
-  assert.equal(r.ok, true); assert.equal(r.found, true); assert.equal(r.evidence_url, 'https://dblp.org/db/conf/icml/');
-  const miss = await dblpVenueLookup('ZZZ', { fetchImpl: json({ result: { hits: { hit: [{ info: { venue: 'ICML' } }] } } }) });
-  assert.equal(miss.found, false);
+const sparql = (title, years, first, last) => ({ results: { bindings: [title
+  ? { title: { value: title }, years: { value: String(years) }, first: { value: String(first) }, last: { value: String(last) } }
+  : { years: { value: '0' } }] } });
+
+test('DBLP (SPARQL by key): found with years of publications; unknown key not found; no key not looked up', async () => {
+  const calls = [];
+  const r = await dblpVenueLookup('ICML', { dblpKey: 'icml', fetchImpl: async (u) => { calls.push(u); return json(sparql('ICML', 40, 1985, 2026))(); } });
+  assert.equal(r.ok, true); assert.equal(r.found, true); assert.equal(r.years_with_publications, 40); assert.equal(r.first_year, 1985);
+  assert.equal(r.evidence_url, 'https://dblp.org/db/conf/icml/');
+  assert.match(calls[0], /^https:\/\/sparql\.dblp\.org\/sparql\?query=/);
+  assert.ok(!calls[0].includes('search/venue'));                                        // disallowed by dblp robots.txt
+  assert.equal((await dblpVenueLookup('ZZZ', { dblpKey: 'zzz', fetchImpl: json(sparql(null)) })).found, false);
+  assert.deepEqual(await dblpVenueLookup('ICML', { fetchImpl: json(sparql('ICML', 1, 1, 1)) }), { ok: false, error: 'no dblp_key' });
 });
 
 test('lookups never throw: HTTP errors and timeouts become ok:false', async () => {
-  assert.deepEqual((await dblpVenueLookup('ICML', { fetchImpl: json({}, 500) })).ok, false);
+  assert.deepEqual((await dblpVenueLookup('ICML', { dblpKey: 'icml', fetchImpl: json({}, 500) })).ok, false);
   const slow = (url, { signal }) => new Promise((_, rej) => signal.addEventListener('abort', () => rej(Object.assign(new Error('aborted'), { name: 'AbortError' }))));
-  const r = await dblpVenueLookup('ICML', { fetchImpl: slow, timeoutMs: 20 });
+  const r = await dblpVenueLookup('ICML', { dblpKey: 'icml', fetchImpl: slow, timeoutMs: 20 });
   assert.equal(r.ok, false); assert.equal(r.error, 'timeout');
 });
 

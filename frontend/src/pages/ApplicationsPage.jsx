@@ -36,7 +36,7 @@ function ApplicationCard({ app, onDelete, onUpdateStatus }) {
   const prevStage = STAGES[currentIdx - 1];
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs hover:shadow-md transition-all duration-200 p-5 flex flex-col justify-between">
+    <div className="bg-surface rounded-2xl border border-slate-200/90 shadow-xs hover:shadow-md transition-all duration-200 p-5 flex flex-col justify-between">
       <div>
         {/* Header: Target Conference & Delete */}
         <div className="flex items-start justify-between gap-2 mb-3">
@@ -44,8 +44,8 @@ function ApplicationCard({ app, onDelete, onUpdateStatus }) {
             {app.conference_name}
           </span>
           <button
-            onClick={() => onDelete(app.id)}
-            className="text-slate-300 hover:text-rose-500 transition shrink-0 p-1 rounded-md hover:bg-rose-50 cursor-pointer"
+            onClick={() => onDelete(app.id)} aria-label="Delete application"
+            className="text-slate-400 hover:text-rose-500 transition shrink-0 p-1 rounded-md hover:bg-rose-50 cursor-pointer"
             title="Remove submission from tracker"
           >
             <Trash2 className="w-4 h-4" />
@@ -216,7 +216,7 @@ export default function ApplicationsPage() {
   return (
     <div className="max-w-[1700px] w-full mx-auto px-6 lg:px-12 py-8 space-y-6">
       {/* Top Banner & Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white rounded-2xl border border-slate-200/90 p-6 sm:p-8 shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-surface rounded-2xl border border-slate-200/90 p-6 sm:p-8 shadow-sm">
         <div>
           <div className="flex items-center gap-2.5 mb-1.5">
             <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center">
@@ -252,7 +252,7 @@ export default function ApplicationsPage() {
             <button
               onClick={() => setViewMode('kanban')}
               className={`flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg transition cursor-pointer ${
-                viewMode === 'kanban' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-900'
+                viewMode === 'kanban' ? 'bg-surface text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-900'
               }`}
             >
               <KanbanSquare className="w-4 h-4" />
@@ -261,7 +261,7 @@ export default function ApplicationsPage() {
             <button
               onClick={() => setViewMode('table')}
               className={`flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg transition cursor-pointer ${
-                viewMode === 'table' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-900'
+                viewMode === 'table' ? 'bg-surface text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-900'
               }`}
             >
               <List className="w-4 h-4" />
@@ -290,7 +290,7 @@ export default function ApplicationsPage() {
 
       {/* Empty State when zero applications exist */}
       {!loading && applications.length === 0 && (
-        <div className="bg-white rounded-2xl border border-slate-200 p-16 text-center space-y-4">
+        <div className="bg-surface rounded-2xl border border-slate-200 p-16 text-center space-y-4">
           <div className="w-16 h-16 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto shadow-2xs">
             <KanbanSquare className="w-8 h-8" />
           </div>
@@ -330,7 +330,7 @@ export default function ApplicationsPage() {
                     <div className={`w-2.5 h-2.5 rounded-full ${stage.dot}`} />
                     <span className={`text-sm font-bold ${stage.headerText}`}>{stage.label}</span>
                   </div>
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full bg-white border border-slate-200/80 ${stage.headerText}`}>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full bg-surface border border-slate-200/80 ${stage.headerText}`}>
                     {items.length}
                   </span>
                 </div>
@@ -359,7 +359,7 @@ export default function ApplicationsPage() {
 
       {/* TABLE LIST VIEW */}
       {!loading && applications.length > 0 && viewMode === 'table' && (
-        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+        <div className="bg-surface rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead className="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-700 uppercase tracking-wider">
@@ -392,7 +392,7 @@ export default function ApplicationsPage() {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <button
-                        onClick={() => handleDelete(app.id)}
+                        onClick={() => handleDelete(app.id)} aria-label="Delete application"
                         className="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition cursor-pointer"
                         title="Delete entry"
                       >
@@ -410,7 +410,7 @@ export default function ApplicationsPage() {
       {/* ADD SUBMISSION MODAL */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-xl p-8 space-y-5">
+          <div className="bg-surface rounded-3xl shadow-2xl border border-slate-200 w-full max-w-xl p-8 space-y-5">
             <div className="flex items-center justify-between pb-4 border-b border-slate-100">
               <div className="flex items-center gap-2">
                 <KanbanSquare className="w-5 h-5 text-blue-600" />
@@ -418,6 +418,7 @@ export default function ApplicationsPage() {
               </div>
               <button
                 onClick={() => setIsAddModalOpen(false)}
+                aria-label="Close"
                 className="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100 cursor-pointer"
               >
                 <X className="w-5 h-5" />
@@ -447,7 +448,7 @@ export default function ApplicationsPage() {
                 <select
                   value={conferenceId}
                   onChange={handleSelectConference}
-                  className="w-full text-sm px-4 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-blue-500 focus:outline-none transition mb-2"
+                  className="w-full text-sm px-4 py-2.5 rounded-xl border border-slate-200 bg-surface focus:border-blue-500 focus:outline-none transition mb-2"
                 >
                   <option value="">-- Choose from Verified Conference Catalog --</option>
                   {conferences.map(c => (
@@ -485,7 +486,7 @@ export default function ApplicationsPage() {
                   <select
                     value={initialStatus}
                     onChange={e => setInitialStatus(e.target.value)}
-                    className="w-full text-sm px-4 py-2.5 rounded-xl border border-slate-200 bg-white focus:border-blue-500 focus:outline-none transition"
+                    className="w-full text-sm px-4 py-2.5 rounded-xl border border-slate-200 bg-surface focus:border-blue-500 focus:outline-none transition"
                   >
                     <option value="Bookmarked">Bookmarked</option>
                     <option value="Drafting">Drafting</option>

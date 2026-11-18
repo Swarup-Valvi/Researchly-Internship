@@ -88,12 +88,12 @@ export default function AuthModal() {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
       <div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative"
+        className="bg-surface rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative"
         onClick={e => e.stopPropagation()}
       >
         {/* Close */}
         <button
-          onClick={() => setIsAuthModalOpen(false)}
+          onClick={() => setIsAuthModalOpen(false)} aria-label="Close"
           className="absolute top-3.5 right-3.5 text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition z-10"
         >
           <X className="w-4 h-4" />
@@ -197,7 +197,7 @@ export default function AuthModal() {
                   <select
                     value={role}
                     onChange={e => setRole(e.target.value)}
-                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:border-blue-500 focus:outline-none bg-white"
+                    className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:border-blue-500 focus:outline-none bg-surface"
                   >
                     <option>PhD Student</option>
                     <option>Postdoctoral Researcher</option>
@@ -240,7 +240,7 @@ export default function AuthModal() {
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
+                  onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? 'Hide password' : 'Show password'}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}

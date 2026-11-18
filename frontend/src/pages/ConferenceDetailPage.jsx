@@ -2,25 +2,68 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../lib/api';
 import {
-  ShieldCheck,
-  AlertTriangle,
-  AlertOctagon,
-  HelpCircle,
-  Calendar,
-  MapPin,
-  ExternalLink,
-  Clock,
-  ArrowLeft,
-  Sparkles,
-  Layers,
-  CheckCircle2,
-  XCircle,
-  Building2,
-  DollarSign,
-  History
+  CalendarDays, MapPin, ExternalLink, Clock, ArrowLeft, Sparkles, Layers, CheckCircle2, XCircle, AlertTriangle,
+  CircleDashed, History, Quote, Info
 } from 'lucide-react';
-import { riskDisplay, scoreText } from '../lib/risk';
 import { deadlineLabel } from '../lib/deadline';
+import { eventDatesLabel } from '../lib/discover';
+import { coverageSummary, MIN_COVERAGE, DIMENSIONS } from '../lib/coverage';
+import RiskBadge from '../components/RiskBadge';
+
+const STATUS = {
+  pass: { label: 'Pass', Icon: CheckCircle2, dot: 'bg-risk-low-soft text-risk-low border-risk-low-line', text: 'text-risk-low' },
+  warn: { label: 'Warning', Icon: AlertTriangle, dot: 'bg-risk-medium-soft text-risk-medium border-risk-medium-line', text: 'text-risk-medium' },
+  fail: { label: 'Fail', Icon: XCircle, dot: 'bg-risk-high-soft text-risk-high border-risk-high-line', text: 'text-risk-high' },
+  info: { label: 'Info (not scored)', Icon: Info, dot: 'bg-surface text-ink-muted border-line', text: 'text-ink-muted' },
+  not_checked: { label: 'Not checked', Icon: CircleDashed, dot: 'bg-surface text-ink-faint border-line border-dashed', text: 'text-ink-muted' }
+};
+const hostOf = (u) => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return null; } };
+const KIND = {
+  page_quote: 'Quote from the conference site', page_scan: 'Pattern scan of pages read', dblp_sparql: 'DBLP (SPARQL)',
+  dblp_api: 'DBLP', rdap: 'RDAP domain registry', community_dataset: 'Community dataset (ccfddl)', openalex_api: 'OpenAlex',
+  curated_list: 'Curated list', observed_url: 'Observed URL', self_reported: 'Self-reported by organisers',
+  publisher_listing: "Publisher's own listing", claim_text: 'Claim text', page_text: 'Page text'
+};
+
+/** Render whatever the engine recorded as `observed`: a quote, a list of quotes, years, or key/value facts. */
+function Observed({ value }) {
+  if (value === null || value === undefined || value === '') return null;
+  if (typeof value === 'string') {
+    return (
+      <blockquote className="mt-2 pl-3 border-l-2 border-line-strong text-sm text-ink-soft italic">
+        <Quote aria-hidden="true" className="inline w-3 h-3 mr-1 -mt-1 text-ink-faint" />{value}
+      </blockquote>
+    );
+  }
+  if (Array.isArray(value)) {
+    if (value.every((x) => typeof x === 'object' && x && x.quote)) {
+      return (
+        <ul className="mt-2 space-y-1.5">
+          {value.map((x, i) => (
+            <li key={i} className="pl-3 border-l-2 border-line-strong text-sm text-ink-soft">
+              <span className="italic">“{x.quote}”</span>
+              <span className="block text-2xs text-ink-muted not-italic mt-0.5">
+                {String(x.category || '').replace(/_/g, ' ')}{x.method ? ` · found by ${x.method === 'pattern' ? 'pattern scan' : 'verified AI quote'}` : ''}
+                {x.source_url && <> · <a className="underline hover:text-ink" href={x.source_url} target="_blank" rel="noopener noreferrer">{hostOf(x.source_url)}</a></>}
+              </span>
+            </li>
+          ))}
+        </ul>
+      );
+    }
+    const flat = value.filter((x) => typeof x !== 'object');
+    return flat.length ? <p className="mt-1.5 text-xs text-ink-muted font-mono">{flat.join(', ')}</p> : null;
+  }
+  if (typeof value === 'object') {
+    const entries = Object.entries(value).filter(([, v]) => v !== null && v !== undefined && typeof v !== 'object');
+    return entries.length ? (
+      <dl className="mt-1.5 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-ink-muted">
+        {entries.map(([k, v]) => <div key={k}><dt className="inline">{k.replace(/_/g, ' ')}:</dt> <dd className="inline font-mono text-ink-soft">{String(v)}</dd></div>)}
+      </dl>
+    ) : null;
+  }
+  return <p className="mt-1.5 text-xs font-mono text-ink-muted">{String(value)}</p>;
+}
 
 export default function ConferenceDetailPage() {
   const { id } = useParams();
@@ -43,10 +86,10 @@ export default function ConferenceDetailPage() {
 
   if (loading) {
     return (
-      <div className="max-w-5xl mx-auto px-4 py-12 animate-pulse space-y-6">
-        <div className="h-6 w-32 bg-slate-200 rounded-sm"></div>
-        <div className="h-40 bg-slate-200 rounded-xl"></div>
-        <div className="h-64 bg-slate-200 rounded-xl"></div>
+      <div className="max-w-page mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 motion-safe:animate-pulse" aria-busy="true" aria-label="Loading conference">
+        <div className="h-5 w-32 bg-surface-sunken rounded"></div>
+        <div className="h-48 bg-surface-sunken rounded-xl"></div>
+        <div className="h-64 bg-surface-sunken rounded-xl"></div>
       </div>
     );
   }
@@ -54,10 +97,10 @@ export default function ConferenceDetailPage() {
   if (!conference) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-16 text-center">
-        <h2 className="text-xl font-bold text-slate-800">Conference Record Not Found</h2>
-        <p className="text-xs text-slate-500 mt-2">The requested conference ID or slug does not exist.</p>
-        <Link to="/discover" className="mt-4 inline-flex items-center gap-1 text-xs text-blue-600 font-semibold">
-          <ArrowLeft className="w-4 h-4" /> Back to Discover Catalog
+        <h1 className="text-2xl">Conference not found</h1>
+        <p className="text-sm text-ink-muted mt-2">No conference has this id or slug.</p>
+        <Link to="/discover" className="btn-secondary mt-5">
+          <ArrowLeft aria-hidden="true" className="w-4 h-4" /> Back to Discover
         </Link>
       </div>
     );
@@ -66,340 +109,247 @@ export default function ConferenceDetailPage() {
   const audit = conference.credibility_audit || {};
   const deadlineHistory = conference.deadline_history || [];
 
-  const risk = riskDisplay(conference.risk_level, conference.credibility_score);
-  const getScoreColor = (score) => {
-    if (typeof score !== 'number') return 'text-slate-500';
-    if (score >= 80) return 'text-emerald-600';
-    if (score >= 50) return 'text-amber-600';
-    return 'text-rose-600';
-  };
-
-  const getScoreBg = (score) => {
-    if (typeof score !== 'number') return 'bg-slate-50 border-slate-200';
-    if (score >= 80) return 'bg-emerald-50 border-emerald-200';
-    if (score >= 50) return 'bg-amber-50 border-amber-200';
-    return 'bg-rose-50 border-rose-200';
-  };
-
-  const statusStyle = {
-    pass: 'bg-emerald-100 text-emerald-800',
-    warn: 'bg-amber-100 text-amber-800',
-    fail: 'bg-rose-100 text-rose-800',
-    not_checked: 'bg-slate-100 text-slate-600'
-  };
-  const statusLabel = { pass: 'Pass', warn: 'Warning', fail: 'Fail', not_checked: 'Not checked' };
+  const cov = coverageSummary(audit);
+  const checks = audit.checks || [];
+  const counts = ['pass', 'warn', 'fail', 'not_checked'].map((k) => [k, checks.filter((c) => c.status === k).length]);
+  const score = conference.credibility_score;
+  const covPct = Math.round((typeof audit.coverage === 'number' ? audit.coverage : cov.covered) * 100);
   const originLabel = conference.data_origin === 'pipeline'
-    ? `Scraped from ${conference.source_primary} (pipeline confidence ${conference.pipeline_confidence})`
-    : 'Developer-curated seed entry \u2014 not machine-verified; confirm dates and links on the official site';
+    ? `Pipeline record from ${conference.source_primary} (extraction confidence ${conference.pipeline_confidence})`
+    : 'Developer-curated seed entry, not machine-verified. Confirm dates and links on the official site.';
 
   return (
-    <div className="max-w-[1500px] w-full mx-auto px-6 lg:px-12 py-8 space-y-6">
-      {/* Back button */}
-      <div>
-        <Link to="/discover" className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-900 transition">
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to Discover Catalog</span>
-        </Link>
-      </div>
+    <div className="max-w-page mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <Link to="/discover" className="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink rounded">
+        <ArrowLeft aria-hidden="true" className="w-4 h-4" /> Back to Discover
+      </Link>
 
-      {/* Header Banner Card */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs">
-        <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
-          <div className="space-y-2 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-                {conference.name} {conference.edition}
-              </h1>
-              {conference.ranking && (
-                <span className="text-xs font-bold px-2 py-0.5 rounded-sm bg-slate-900 text-white">
-                  {conference.ranking}
-                </span>
-              )}
-              {conference.is_extended && (
-                <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-amber-100 text-amber-800">
-                  Deadline Extended
-                </span>
-              )}
-            </div>
-
-            <p className="text-sm text-slate-600">{conference.title}</p>
-            <p className="text-xs font-medium text-blue-600">{conference.field}</p>
-
-            <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 pt-2">
-              <div className="flex items-center gap-1.5">
-                <Calendar className="w-4 h-4 text-slate-400" />
-                <span>Deadline: <strong>{deadlineLabel(conference, 'TBA')}</strong></span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <MapPin className="w-4 h-4 text-slate-400" />
-                <span>{conference.location} • {conference.format}</span>
-              </div>
-              {conference.publisher && (
-                <div className="flex items-center gap-1.5">
-                  <Layers className="w-4 h-4 text-slate-400" />
-                  <span>{conference.publisher}</span>
+      {/* Header + score panel */}
+      <section className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6" aria-labelledby="conf-title">
+        <div className="card p-6 space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            {conference.ranking && <span className="chip border-line bg-surface-muted text-ink-soft font-mono">{conference.ranking}</span>}
+            {conference.format && <span className="chip border-line bg-surface-muted text-ink-soft">{conference.format}</span>}
+            {conference.is_extended && <span className="chip border-line bg-surface-muted text-ink-soft">Deadline extended</span>}
+          </div>
+          <div>
+            <h1 id="conf-title" className="text-3xl sm:text-4xl">
+              {conference.name} <span className="text-ink-muted font-normal">{conference.edition}</span>
+            </h1>
+            {conference.title && <p className="text-lg text-ink-soft mt-1">{conference.title}</p>}
+            {conference.field && <p className="text-sm text-ink-muted mt-1">{conference.field}</p>}
+          </div>
+          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm pt-2 border-t border-line">
+            {[
+              [CalendarDays, 'Submission deadline', deadlineLabel(conference, 'TBA')],
+              [Clock, 'Event dates', eventDatesLabel(conference)],
+              [MapPin, 'Location', [conference.location || conference.venue || 'Location not stated', conference.venue && conference.location ? conference.venue : null].filter(Boolean).join(' · ')],
+              [Layers, 'Publisher', conference.publisher || 'Not stated']
+            ].map(([Icon, label, value]) => (
+              <div key={label} className="flex gap-2.5 pt-3">
+                <Icon aria-hidden="true" className="w-4 h-4 mt-0.5 text-ink-faint shrink-0" />
+                <div className="min-w-0">
+                  <dt className="text-xs text-ink-muted">{label}</dt>
+                  <dd className="text-ink font-medium break-words">{value}</dd>
                 </div>
-              )}
-            </div>
-          </div>
-
-          {/* Credibility Score Box */}
-          <div className={`p-4 rounded-xl border flex flex-col items-center justify-center text-center min-w-[170px] ${getScoreBg(conference.credibility_score)}`}>
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
-              Evidence Score
-            </span>
-            <div className={`text-4xl font-black my-1 font-mono ${getScoreColor(conference.credibility_score)}`}>
-              {typeof conference.credibility_score === 'number' ? conference.credibility_score : '\u2014'}
-              {typeof conference.credibility_score === 'number' && <span className="text-sm font-normal text-slate-500">/100</span>}
-            </div>
-            <span className={`text-xs font-bold uppercase tracking-wide ${getScoreColor(conference.credibility_score)}`}>
-              {risk.label}
-            </span>
-            {typeof audit.coverage === 'number' && (
-              <span className="mt-1 text-[10px] text-slate-500">
-                Based on {Math.round(audit.coverage * 100)}% of the audit weight
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Quick External Actions */}
-        <div className="mt-6 pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap gap-2">
-            {conference.topics?.map((topic, i) => (
-              <span key={i} className="text-[11px] font-medium px-2.5 py-1 bg-slate-100 text-slate-700 rounded-md">
-                {topic}
-              </span>
+              </div>
             ))}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Link
-              to={`/ai-match?target=${encodeURIComponent(conference.name)}`}
-              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs flex items-center gap-1.5 transition"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Match My Paper</span>
-            </Link>
-
+          </dl>
+          <div className="flex flex-wrap gap-2 pt-1">
             {conference.official_url && (
-              <a
-                href={conference.official_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
-              >
-                <span>Official Website</span>
-                <ExternalLink className="w-3.5 h-3.5" />
+              <a href={conference.official_url} target="_blank" rel="noopener noreferrer" className="btn-primary">
+                Official website <ExternalLink aria-hidden="true" className="w-4 h-4" /><span className="sr-only">(opens in a new tab)</span>
               </a>
             )}
+            <Link to={`/ai-match?target=${encodeURIComponent(conference.name)}`} className="btn-secondary">
+              <Sparkles aria-hidden="true" className="w-4 h-4" /> Match my paper
+            </Link>
           </div>
-        </div>
-      </div>
-
-      {/* Origin of this record */}
-      <div className="text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2">
-        <strong className="text-slate-700">Data origin:</strong> {originLabel}
-        {conference.source_urls?.length > 0 && (
-          <span> \u2022 Sources: {conference.source_urls.map((u, i) => (
-            <a key={i} href={u} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline mr-2">{new URL(u).hostname}</a>
-          ))}</span>
-        )}
-      </div>
-
-      {/* Risk Audit: dimensions + the evidence behind each check */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
-        <div>
-          <h2 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <ShieldCheck className="w-5 h-5 text-blue-600" />
-            <span>Risk Indicator Audit</span>
-          </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Only checks that could actually be performed are scored. Everything else is shown as &quot;Not checked&quot;
-            \u2014 these are risk indicators, not a verdict, and absence from a database is not proof a venue is illegitimate.
-          </p>
+          {conference.topics?.length > 0 && (
+            <ul className="flex flex-wrap gap-1.5" aria-label="Topics">
+              {conference.topics.map((t) => <li key={t} className="text-xs text-ink-soft px-2 py-0.5 rounded-md bg-surface-sunken">{t}</li>)}
+            </ul>
+          )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
-          {[
-            { label: 'Domain & Infrastructure', score: audit.domain_score },
-            { label: 'Organizer & Sponsorship', score: audit.organizer_score },
-            { label: 'Publisher Reputation', score: audit.publisher_score },
-            { label: 'Indexing Validation', score: audit.indexing_score },
-            { label: 'Program Committee', score: audit.tpc_score },
-            { label: 'Past History & Longevity', score: audit.history_score },
-            { label: 'Physical Venue', score: audit.venue_score },
-            { label: 'Fee Transparency', score: audit.fee_score },
-            { label: 'Submission Channel', score: audit.editorial_score },
-          ].map((dim, i) => (
-            <div key={i} className="p-3 rounded-xl border border-slate-100 bg-slate-50/50 flex items-center justify-between">
-              <p className="text-xs font-bold text-slate-800">{dim.label}</p>
-              <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded-md ${
-                typeof dim.score !== 'number' ? 'bg-slate-100 text-slate-500'
-                  : dim.score >= 80 ? 'bg-emerald-100 text-emerald-800'
-                    : (dim.score >= 50 ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800')
-              }`}>
-                {typeof dim.score === 'number' ? `${dim.score}/100` : 'Not checked'}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        {audit.checks?.length > 0 && (
-          <div className="pt-2 space-y-2">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600">Evidence per check</h3>
-            {audit.checks.map((c) => (
-              <div key={c.id} className="p-3 rounded-xl border border-slate-100 text-xs space-y-1">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-semibold text-slate-800">{c.label}</span>
-                  <span className={`px-2 py-0.5 rounded-md font-bold ${statusStyle[c.status]}`}>{statusLabel[c.status]}</span>
-                </div>
-                <p className="text-slate-600">{c.detail}</p>
-                {c.evidence && (
-                  <p className="text-[10px] text-slate-400">
-                    Evidence ({c.evidence.kind.replace('_', ' ')})
-                    {c.evidence.url && <> \u2014 <a href={c.evidence.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">source</a></>}
-                    {c.evidence.observed && typeof c.evidence.observed === 'string' && <> \u2014 &ldquo;{c.evidence.observed}&rdquo;</>}
-                    {' '}\u2022 checked {new Date(c.evidence.checked_at).toLocaleDateString()}
+        <aside className="card p-6 space-y-5" aria-label="Risk assessment summary">
+          <div>
+            <p className="eyebrow">Evidence score</p>
+            {typeof score === 'number' ? (
+              <p className="mt-1 font-serif text-5xl font-semibold text-ink tabular-nums">
+                {score}<span className="text-base font-sans font-normal text-ink-muted">/100</span>
+              </p>
+            ) : (
+              <>
+                <p className="mt-1 font-serif text-2xl font-semibold text-ink">
+                  {conference.risk_level === 'High' ? 'Score withheld' : 'Not enough evidence'}
+                </p>
+                {typeof audit.provisional_score === 'number' && (
+                  <p className="text-xs text-ink-muted mt-1">
+                    Provisional figure, not a result: <span className="font-mono">{audit.provisional_score}/100</span> from
+                    {' '}{cov.ranCount} of {cov.dims.length} dimensions ({covPct}% of the audit weight; {Math.round(MIN_COVERAGE * 100)}% needed).
                   </p>
                 )}
-              </div>
-            ))}
-            {audit.limitations?.map((l, i) => (
-              <p key={i} className="text-[10px] text-slate-400 italic">{l}</p>
-            ))}
+              </>
+            )}
+            {(typeof score === 'number' || conference.risk_level === 'High') && (
+              <div className="mt-2"><RiskBadge risk={conference.risk_level} score={null} size="lg" /></div>
+            )}
           </div>
-        )}
-      </div>
-
-      {/* 4 Evidence Cards (Positive, Warnings, Contradictions, Missing Info) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-        {/* 1. Positive Indicators (Green) */}
-        <div className="bg-white rounded-2xl border border-emerald-200 p-5 shadow-xs">
-          <div className="flex items-center gap-2 mb-3 text-emerald-700">
-            <CheckCircle2 className="w-4 h-4" />
-            <h3 className="font-bold text-xs uppercase tracking-wider">
-              Positive Indicators ({audit.positive_indicators?.length || 0})
-            </h3>
+          <div>
+            <div className="flex items-baseline justify-between text-xs">
+              <span id="cov-label" className="flex items-center gap-1.5 font-semibold text-ink-soft">
+                {cov.enough ? <CheckCircle2 aria-hidden="true" className="w-3.5 h-3.5" /> : <CircleDashed aria-hidden="true" className="w-3.5 h-3.5" />}
+                Evidence coverage
+              </span>
+              <span className="font-mono tabular-nums text-ink">{covPct}%</span>
+            </div>
+            <div role="meter" aria-labelledby="cov-label" aria-valuemin={0} aria-valuemax={100} aria-valuenow={covPct}
+              aria-valuetext={`${covPct}% of the audit weight has evidence; minimum ${Math.round(MIN_COVERAGE * 100)}%`}
+              className="relative mt-1.5 h-2 rounded-full bg-surface-sunken overflow-visible">
+              <div className={`h-full rounded-full ${cov.enough ? 'bg-accent' : 'bg-slate-400'}`} style={{ width: `${Math.min(100, covPct)}%` }} />
+              <div className="absolute -top-1 -bottom-1 w-px bg-ink" style={{ left: `${MIN_COVERAGE * 100}%` }} aria-hidden="true" />
+            </div>
+            <p className="mt-1.5 text-2xs text-ink-muted">
+              {cov.ranCount} of {cov.dims.length} dimensions had evidence. Marker = {Math.round(MIN_COVERAGE * 100)}% minimum for a risk tier.
+            </p>
           </div>
-          {audit.positive_indicators && audit.positive_indicators.length > 0 ? (
-            <ul className="space-y-2 text-xs text-slate-700">
-              {audit.positive_indicators.map((item, idx) => (
-                <li key={idx} className="flex items-start gap-2">
-                  <span className="text-emerald-500 font-bold shrink-0">✓</span>
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-xs text-slate-400 italic">No passing checks yet.</p>
-          )}
-        </div>
-
-        {/* 2. Direct Contradictions (Red) */}
-        <div className="bg-white rounded-2xl border border-rose-200 p-5 shadow-xs">
-          <div className="flex items-center gap-2 mb-3 text-rose-700">
-            <AlertOctagon className="w-4 h-4" />
-            <h3 className="font-bold text-xs uppercase tracking-wider">
-              Direct Contradictions ({audit.contradictions?.length || 0})
-            </h3>
-          </div>
-          {audit.contradictions && audit.contradictions.length > 0 ? (
-            <ul className="space-y-2 text-xs text-rose-950 font-medium">
-              {audit.contradictions.map((item, idx) => (
-                <li key={idx} className="flex items-start gap-2 p-2 bg-rose-50 rounded-lg border border-rose-100">
-                  <span className="text-rose-600 font-bold shrink-0">✕</span>
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-xs text-slate-500">✓ No failed checks among the checks that could be performed.</p>
-          )}
-        </div>
-
-        {/* 3. Warnings (Yellow) */}
-        <div className="bg-white rounded-2xl border border-amber-200 p-5 shadow-xs">
-          <div className="flex items-center gap-2 mb-3 text-amber-700">
-            <AlertTriangle className="w-4 h-4" />
-            <h3 className="font-bold text-xs uppercase tracking-wider">
-              Warning Indicators ({audit.warning_indicators?.length || 0})
-            </h3>
-          </div>
-          {audit.warning_indicators && audit.warning_indicators.length > 0 ? (
-            <ul className="space-y-2 text-xs text-slate-700">
-              {audit.warning_indicators.map((item, idx) => (
-                <li key={idx} className="flex items-start gap-2">
-                  <span className="text-amber-500 font-bold shrink-0">⚠</span>
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-xs text-slate-400 italic">No operational warnings active for this cycle.</p>
-          )}
-        </div>
-
-        {/* 4. Missing Information (Gray) */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
-          <div className="flex items-center gap-2 mb-3 text-slate-700">
-            <HelpCircle className="w-4 h-4" />
-            <h3 className="font-bold text-xs uppercase tracking-wider">
-              Missing Information ({audit.missing_information?.length || 0})
-            </h3>
-          </div>
-          {audit.missing_information && audit.missing_information.length > 0 ? (
-            <ul className="space-y-2 text-xs text-slate-600">
-              {audit.missing_information.map((item, idx) => (
-                <li key={idx} className="flex items-start gap-2">
-                  <span className="text-slate-400 font-bold shrink-0">•</span>
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-xs text-slate-400 italic">Nothing flagged as missing.</p>
-          )}
-        </div>
-
-      </div>
-
-      {/* Deadline Change & Drift History Timeline */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
-        <h3 className="text-sm font-bold text-slate-900 tracking-tight flex items-center gap-2">
-          <History className="w-4 h-4 text-blue-600" />
-          <span>Deadline Drift & Extension History Timeline</span>
-        </h3>
-
-        {deadlineHistory.length > 0 ? (
-          <div className="relative pl-6 border-l-2 border-blue-500 space-y-4">
-            {deadlineHistory.map((dh, i) => (
-              <div key={i} className="relative">
-                <div className="absolute -left-[31px] top-1 w-3 h-3 rounded-full bg-blue-600 border-2 border-white"></div>
-                <div className="p-3 bg-slate-50 rounded-xl text-xs space-y-1">
-                  <div className="flex items-center justify-between text-slate-800 font-semibold">
-                    <span>
-                      Deadline shifted from{' '}
-                      <span className="line-through text-slate-400">{dh.raw_previous_deadline || dh.previous_deadline}</span>{' '}
-                      to <span className="text-blue-600 font-bold">{dh.raw_new_deadline || dh.new_deadline}</span>
-                    </span>
-                    <span className="text-[10px] text-slate-400">
-                      {new Date(dh.detected_at).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <p className="text-slate-600">{dh.change_reason}</p>
+          <dl className="grid grid-cols-4 gap-2 text-center">
+            {counts.map(([k, n]) => {
+              const S = STATUS[k];
+              return (
+                <div key={k} className="rounded-lg border border-line py-2">
+                  <dd className={`font-mono text-lg font-semibold tabular-nums ${n ? S.text : 'text-ink-faint'}`}>{n}</dd>
+                  <dt className="text-2xs text-ink-muted">{S.label}</dt>
                 </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-xs text-slate-500 italic">
-            No deadline extensions or drift detected. The initial submission deadline has remained firm.
+              );
+            })}
+          </dl>
+          <p className="text-2xs text-ink-muted">
+            Risk indicators, not a verdict. Absence from a database is not proof a venue is illegitimate.
           </p>
+        </aside>
+      </section>
+
+      <p className="text-xs text-ink-muted">
+        <span className="font-semibold text-ink-soft">Data origin:</span> {originLabel}
+        {conference.source_urls?.length > 0 && (
+          <> · Sources: {conference.source_urls.map((u, i) => (
+            <a key={i} href={u} target="_blank" rel="noopener noreferrer" className="underline hover:text-ink mr-2">{hostOf(u)}</a>
+          ))}</>
         )}
-      </div>
+      </p>
+
+      {/* Coverage by dimension */}
+      <section aria-labelledby="cov-heading" className="space-y-3">
+        <h2 id="cov-heading" className="text-2xl">Coverage by dimension</h2>
+        <p className="text-sm text-ink-muted max-w-3xl">
+          Only checks that could be performed are scored. A dimension without evidence does not count toward the score,
+          and its reasons are listed.
+        </p>
+        <ul className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          {cov.dims.map((d) => (
+            <li key={d.key} className={`rounded-xl border p-4 space-y-2 ${d.ran ? 'bg-surface border-line' : 'bg-surface-muted border-dashed border-line-strong'}`}>
+              <div className="flex items-start justify-between gap-2">
+                <p className="flex items-center gap-2 text-sm font-semibold text-ink">
+                  {d.ran
+                    ? <CheckCircle2 aria-hidden="true" className="w-4 h-4 shrink-0 text-ink-soft" />
+                    : <CircleDashed aria-hidden="true" className="w-4 h-4 shrink-0 text-ink-faint" />}
+                  <span>{d.label} <span className="font-normal text-ink-muted">· {Math.round(d.weight * 100)}%</span></span>
+                </p>
+                {/* Below the coverage threshold no number is shown, not even per dimension. */}
+                <span className={`chip shrink-0 tabular-nums ${d.ran ? 'border-line bg-surface-sunken text-ink' : 'border-line border-dashed bg-transparent text-ink-muted'}`}>
+                  {d.ran ? (cov.enough && typeof d.score === 'number' ? `Ran · ${d.score}/100` : 'Ran') : 'Did not run'}
+                </span>
+              </div>
+              {d.checksRun.length > 0 && (
+                <p className="text-xs text-ink-soft">Ran: {d.checksRun.map((c) => `${c.label} (${STATUS[c.status].label.toLowerCase()})`).join('; ')}</p>
+              )}
+              {d.info.length > 0 && (
+                <p className="text-xs text-ink-muted">Info, not scored: {d.info.map((c) => c.label).join('; ')}</p>
+              )}
+              {d.reasons.length > 0 && (
+                <ul className="text-xs text-ink-muted space-y-0.5">
+                  {d.reasons.map((r, i) => <li key={i}><span className="text-ink-soft">{d.ran ? 'Also not run' : 'Not run'}: {r.label}.</span> {r.reason}</li>)}
+                </ul>
+              )}
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      {/* Evidence timeline */}
+      {checks.length > 0 && (
+        <section aria-labelledby="ev-heading" className="space-y-4">
+          <h2 id="ev-heading" className="text-2xl">Evidence per check</h2>
+          {DIMENSIONS.map((d) => {
+            const mine = checks.filter((c) => c.dimension === d.key);
+            if (!mine.length) return null;
+            return (
+              <div key={d.key} className="card p-5">
+                <h3 className="eyebrow mb-3">{d.label}</h3>
+                <ol className="relative border-l border-line ml-3 space-y-5">
+                  {mine.map((c) => {
+                    const S = STATUS[c.status] || STATUS.not_checked;
+                    const e = c.evidence;
+                    return (
+                      <li key={c.id} className="pl-6 relative">
+                        <span className={`absolute -left-3 top-0 w-6 h-6 rounded-full border flex items-center justify-center ${S.dot}`}>
+                          <S.Icon aria-hidden="true" className="w-3.5 h-3.5" />
+                        </span>
+                        <div className="flex flex-wrap items-baseline gap-x-2">
+                          <p className="text-sm font-semibold text-ink">{c.label}</p>
+                          <p className={`text-xs font-semibold ${S.text}`}>{S.label}</p>
+                        </div>
+                        <p className="text-sm text-ink-soft mt-0.5">{c.detail}</p>
+                        {e && (
+                          <>
+                            <Observed value={e.observed} />
+                            <p className="mt-1.5 text-2xs text-ink-muted">
+                              {KIND[e.kind] || String(e.kind || '').replace(/_/g, ' ')}
+                              {e.url && <> · <a href={e.url} target="_blank" rel="noopener noreferrer" className="underline hover:text-ink">{hostOf(e.url) || 'source'}<span className="sr-only"> (opens in a new tab)</span></a></>}
+                              {e.checked_at && <> · checked <time dateTime={e.checked_at}>{new Date(e.checked_at).toLocaleDateString()}</time></>}
+                            </p>
+                          </>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ol>
+              </div>
+            );
+          })}
+          {audit.limitations?.length > 0 && (
+            <ul className="text-xs text-ink-muted space-y-1 list-disc pl-5">
+              {audit.limitations.map((l, i) => <li key={i}>{l}</li>)}
+            </ul>
+          )}
+        </section>
+      )}
+
+      {/* Deadline history */}
+      <section aria-labelledby="dh-heading" className="card p-6 space-y-4">
+        <h2 id="dh-heading" className="text-xl flex items-center gap-2">
+          <History aria-hidden="true" className="w-5 h-5 text-ink-faint" /> Deadline changes
+        </h2>
+        {deadlineHistory.length > 0 ? (
+          <ol className="relative border-l border-line ml-2 space-y-4">
+            {deadlineHistory.map((dh, i) => (
+              <li key={i} className="pl-5 relative text-sm">
+                <span aria-hidden="true" className="absolute -left-[5px] top-1.5 w-2.5 h-2.5 rounded-full bg-accent" />
+                <p className="text-ink">
+                  Moved from <span className="line-through text-ink-muted">{dh.raw_previous_deadline || dh.previous_deadline}</span> to{' '}
+                  <span className="font-semibold">{dh.raw_new_deadline || dh.new_deadline}</span>
+                  <span className="text-xs text-ink-muted"> · detected <time dateTime={dh.detected_at}>{new Date(dh.detected_at).toLocaleDateString()}</time></span>
+                </p>
+                <p className="text-ink-muted text-xs mt-0.5">{dh.change_reason}</p>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p className="text-sm text-ink-muted">No deadline changes detected between pipeline runs.</p>
+        )}
+      </section>
     </div>
   );
 }
-

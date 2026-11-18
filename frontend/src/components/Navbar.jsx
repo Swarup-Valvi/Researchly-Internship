@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   Home, Compass, Sparkles, KanbanSquare, FileCheck2,
   Users, LogIn, LogOut, User, GraduationCap, Bell,
-  Menu, X, ChevronDown
+  Menu, X, ChevronDown, Moon, Sun
 } from 'lucide-react';
 
 const NAV_LINKS = [
@@ -16,7 +16,20 @@ const NAV_LINKS = [
   { to: '/network', label: 'Network', icon: Users },
 ];
 
+/** Light/dark theme: saved choice, else the OS preference (set before paint in index.html). */
+function useTheme() {
+  const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
+  const toggle = () => {
+    const next = !dark;
+    document.documentElement.classList.toggle('dark', next);
+    try { localStorage.setItem('researchly_theme', next ? 'dark' : 'light'); } catch { /* private mode */ }
+    setDark(next);
+  };
+  return [dark, toggle];
+}
+
 export default function Navbar() {
+  const [dark, toggleTheme] = useTheme();
   const location = useLocation();
   const { user, logout, setIsAuthModalOpen, pendingRequestsCount } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -29,8 +42,15 @@ export default function Navbar() {
         setShowUserMenu(false);
       }
     }
+    function handleEscape(e) {
+      if (e.key === 'Escape') { setShowUserMenu(false); setShowMobileMenu(false); }
+    }
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
   }, []);
 
   useEffect(() => {
@@ -43,39 +63,35 @@ export default function Navbar() {
       <Link
         to={to}
         onClick={onClick}
-        className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg transition ${
+        aria-current={isActive ? 'page' : undefined}
+        className={`flex items-center gap-2 px-3 py-2.5 text-sm font-medium rounded-lg transition-colors duration-150 ${
           isActive
-            ? 'bg-blue-50 text-blue-700 font-semibold'
-            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+            ? 'bg-accent-50 text-accent-700 font-semibold'
+            : 'text-ink-soft hover:text-ink hover:bg-surface-sunken'
         }`}
       >
-        <Icon className={`w-4 h-4 ${isActive ? 'text-blue-600' : 'text-slate-400'}`} />
+        <Icon aria-hidden="true" className={`w-4 h-4 ${isActive ? 'text-accent' : 'text-ink-faint'}`} />
         {label}
       </Link>
     );
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-2xs">
-      <div className="max-w-screen-2xl mx-auto px-6 lg:px-10">
-        <div className="flex items-center justify-between h-[68px]">
+    <header className="sticky top-0 z-40 bg-surface/95 backdrop-blur border-b border-line">
+      <div className="max-w-page mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16 gap-4">
           {/* Brand Logo */}
-          <Link to="/" className="flex items-center gap-2.5 shrink-0 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center shadow-sm shadow-blue-500/20 group-hover:scale-105 transition">
-              <GraduationCap className="w-5 h-5 text-white" />
+          <Link to="/" className="flex items-center gap-2.5 shrink-0 rounded-lg" aria-label="Researchly home">
+            <div className="bg-accent w-8 h-8 rounded-lg flex items-center justify-center">
+              <GraduationCap aria-hidden="true" className="w-[18px] h-[18px] text-white" />
             </div>
-            <div>
-              <div className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-1">
-                Researchly<span className="text-blue-600 font-extrabold">.io</span>
-              </div>
-              <div className="text-[10px] text-slate-400 font-semibold tracking-wide uppercase -mt-0.5">
-                Academic Intelligence
-              </div>
+            <div className="font-serif text-xl font-semibold text-ink tracking-tight">
+              Researchly<span className="text-ink-muted font-normal">.io</span>
             </div>
           </Link>
 
           {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center gap-1">
+          <nav aria-label="Main" className="hidden lg:flex items-center gap-0.5">
             {NAV_LINKS.map(link => {
               const isActive = location.pathname === link.to;
               const Icon = link.icon;
@@ -83,13 +99,14 @@ export default function Navbar() {
                 <Link
                   key={link.to}
                   to={link.to}
-                  className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg transition ${
+                  aria-current={isActive ? 'page' : undefined}
+                  className={`relative flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-150 ${
                     isActive
-                      ? 'bg-blue-50 text-blue-700 font-semibold'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                      ? 'text-accent-700 font-semibold after:absolute after:left-3 after:right-3 after:-bottom-[15px] after:h-0.5 after:bg-accent'
+                      : 'text-ink-soft hover:text-ink hover:bg-surface-sunken'
                   }`}
                 >
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-blue-600' : 'text-slate-400'}`} />
+                  <Icon aria-hidden="true" className={`w-4 h-4 ${isActive ? 'text-accent' : 'text-ink-faint'}`} />
                   <span>{link.label}</span>
                 </Link>
               );
@@ -97,7 +114,16 @@ export default function Navbar() {
           </nav>
 
           {/* Right Side Actions */}
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label={dark ? 'Switch to light theme' : 'Switch to dark theme'}
+              title={dark ? 'Light theme' : 'Dark theme'}
+              className="p-2 rounded-lg text-ink-muted hover:text-ink hover:bg-surface-sunken transition"
+            >
+              {dark ? <Sun aria-hidden="true" className="w-[18px] h-[18px]" /> : <Moon aria-hidden="true" className="w-[18px] h-[18px]" />}
+            </button>
             {user ? (
               <>
                 {/* Requests Bell with Badge */}
@@ -105,10 +131,11 @@ export default function Navbar() {
                   to="/network"
                   className="relative p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition"
                   title="Connection requests inbox"
+                  aria-label={`Connection requests${pendingRequestsCount ? ` (${pendingRequestsCount} pending)` : ''}`}
                 >
                   <Bell className="w-5 h-5 text-slate-600" />
                   {pendingRequestsCount > 0 && (
-                    <span className="absolute top-1 right-1 w-4 h-4 bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center animate-pulse">
+                    <span className="absolute top-1 right-1 w-4 h-4 bg-rose-600 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
                       {pendingRequestsCount > 9 ? '9+' : pendingRequestsCount}
                     </span>
                   )}
@@ -118,10 +145,13 @@ export default function Navbar() {
                 <div className="relative" ref={userMenuRef}>
                   <button
                     onClick={() => setShowUserMenu(!showUserMenu)}
+                    aria-haspopup="menu"
+                    aria-expanded={showUserMenu}
+                    aria-label="Account menu"
                     className="flex items-center gap-2 p-1 pr-2.5 rounded-xl hover:bg-slate-100 transition cursor-pointer border border-transparent hover:border-slate-200"
                   >
                     <img
-                      src={user.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.full_name || 'U')}&background=3b82f6&color=fff&size=36`}
+                      src={user.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.full_name || 'U')}&background=4548a1&color=fff&size=36`}
                       alt={user.full_name || 'Profile'}
                       className="w-8 h-8 rounded-xl object-cover border border-slate-200 shadow-2xs"
                     />
@@ -129,7 +159,7 @@ export default function Navbar() {
                   </button>
 
                   {showUserMenu && (
-                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-200/90 py-2 z-50 animate-in fade-in duration-100">
+                    <div className="absolute right-0 mt-2 w-64 bg-surface rounded-2xl shadow-xl border border-slate-200/90 py-2 z-50 animate-in fade-in duration-100">
                       {/* User Info Header */}
                       <div className="px-4 py-3 border-b border-slate-100">
                         <p className="text-sm font-bold text-slate-900 truncate">{user.full_name || 'Academic Faculty'}</p>
@@ -185,7 +215,7 @@ export default function Navbar() {
             ) : (
               <button
                 onClick={() => setIsAuthModalOpen(true)}
-                className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition shadow-sm cursor-pointer"
+                className="btn-primary py-2 cursor-pointer"
               >
                 <LogIn className="w-4 h-4" />
                 <span>Sign In</span>
@@ -195,7 +225,10 @@ export default function Navbar() {
             {/* Mobile Hamburger Toggle */}
             <button
               onClick={() => setShowMobileMenu(!showMobileMenu)}
-              className="md:hidden p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition"
+              aria-label={showMobileMenu ? 'Close menu' : 'Open menu'}
+              aria-expanded={showMobileMenu}
+              aria-controls="mobile-nav"
+              className="lg:hidden p-2 text-ink-muted hover:text-ink hover:bg-surface-sunken rounded-lg transition-colors duration-150"
             >
               {showMobileMenu ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -205,7 +238,7 @@ export default function Navbar() {
 
       {/* Mobile Drawer Menu */}
       {showMobileMenu && (
-        <div className="md:hidden border-t border-slate-100 bg-white px-4 py-3 space-y-1">
+        <nav id="mobile-nav" aria-label="Main" className="lg:hidden border-t border-line bg-surface px-4 py-3 space-y-1">
           {NAV_LINKS.map(link => (
             <NavLink key={link.to} to={link.to} label={link.label} icon={link.icon} />
           ))}
@@ -214,7 +247,7 @@ export default function Navbar() {
               <NavLink to="/profile" label="My Profile" icon={User} />
             </div>
           )}
-        </div>
+        </nav>
       )}
     </header>
   );

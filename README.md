@@ -186,7 +186,7 @@ To create all PostgreSQL tables, indexes, and Row-Level-Security (RLS) policies 
 The 27 hand-entered conferences in `backend/src/db/realEvents.js` (`curated_seed`, unverified) are still shown by
 default. To switch the app to pipeline data only:
 
-1. Apply `backend/migrations/001` → `002` → `003` (see `backend/migrations/README.md`).
+1. Apply `backend/migrations/001` → `002` → `003` → `004` → `005` → `006` (see `backend/migrations/README.md`).
 2. Review ccfddl's terms, set `tos_reviewed: true` for `ccfddl` in `researchly_pipeline/config/sources.yaml`, and
    let **ingest-ccfddl** run once (or trigger it with *Run workflow*). Confirm records arrived:
    `GET /api/conferences` shows `data_origin: "pipeline"` entries.

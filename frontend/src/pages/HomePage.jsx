@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
 import AiPostModal from '../components/AiPostModal';
+import RiskBadge from '../components/RiskBadge';
+import { sortForDiscover } from '../lib/discover';
 import {
   Sparkles,
   ThumbsUp,
@@ -167,235 +169,157 @@ export default function HomePage() {
     setTimeout(() => setShareSuccessId(null), 3000);
   };
 
-  // Top upcoming deadlines
-  const upcomingCountdowns = conferences
-    .filter(c => c.submission_deadline)
-    .sort((a, b) => deadlineMoment(a) - deadlineMoment(b))
-    .slice(0, 5);
+  // Upcoming deadlines: only deadlines that are still open (AoE), soonest first.
+  const upcomingCountdowns = sortForDiscover(conferences)
+    .filter((c) => c.submission_deadline && daysLeft(c) >= 0)
+    .slice(0, 6);
 
   // =========================================================================
   // 1. GUEST / LANDING PAGE VIEW (When not logged in)
   // =========================================================================
   if (!user) {
+    const PILLARS = [
+      { Icon: ShieldCheck, title: 'Evidence-based risk audits', to: '/discover?risk=High', cta: 'See high-risk indicators',
+        text: 'Nine dimensions, each scored only from evidence with a source: DBLP indexing, CORE/CCF listings, domain age, fees, review process. What could not be checked is shown as such.' },
+      { Icon: Compass, title: 'Deadlines you can trust', to: '/discover', cta: 'Browse the catalogue',
+        text: 'Calls for papers with countdowns to the end of the day anywhere on earth. Time zones are shown only when the source states them.' },
+      { Icon: KanbanSquare, title: 'Submission tracker', to: '/applications', cta: 'Open the tracker',
+        text: 'Follow each manuscript from bookmarked to accepted, with one-click tracking from any conference.' },
+      { Icon: Users, title: 'Researcher network', to: '/network', cta: 'Explore the network',
+        text: 'Find co-authors by research area, share preprints and join discussion hubs.' }
+    ];
     return (
-      <div className="space-y-12 pb-16">
-        {/* HERO SECTION */}
-        <section className="bg-gradient-to-b from-blue-900 via-indigo-950 to-slate-950 text-white pt-16 pb-20 px-6 lg:px-12 relative overflow-hidden">
-          <div
-            className="absolute inset-0 opacity-10"
-            style={{
-              backgroundImage: 'radial-gradient(circle at 20% 50%, white 1.5px, transparent 1.5px), radial-gradient(circle at 80% 20%, white 1.5px, transparent 1.5px)',
-              backgroundSize: '40px 40px'
-            }}
-          />
-          <div className="max-w-[1500px] mx-auto relative z-10 text-center space-y-6">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-200 text-xs sm:text-sm font-semibold backdrop-blur-xs">
-              <ShieldCheck className="w-4 h-4 text-blue-400" />
-              <span>Academic Intelligence & Verified Conference Platform</span>
+      <div className="pb-20">
+        {/* Hero */}
+        <section className="border-b border-line bg-surface">
+          <div className="max-w-page mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24 grid lg:grid-cols-[1.2fr_1fr] gap-12 items-center">
+            <div className="space-y-6">
+              <p className="eyebrow flex items-center gap-1.5"><ShieldCheck aria-hidden="true" className="w-3.5 h-3.5" /> Conference discovery and credibility</p>
+              <h1 className="text-4xl sm:text-5xl text-ink max-w-2xl">
+                Choose where to publish with evidence, not guesswork.
+              </h1>
+              <p className="text-lg text-ink-soft max-w-xl">
+                Researchly lists calls for papers with reliable deadlines and audits each venue for risk indicators,
+                showing the source behind every finding.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                <Link to="/discover" className="btn-primary px-5 py-3 text-base">
+                  Browse conferences <ArrowRight aria-hidden="true" className="w-4 h-4" />
+                </Link>
+                <button type="button" onClick={() => setIsAuthModalOpen(true)} className="btn-secondary px-5 py-3 text-base cursor-pointer">
+                  <UserPlus aria-hidden="true" className="w-4 h-4" /> Create a free account
+                </button>
+              </div>
+              <ul className="flex flex-wrap gap-x-6 gap-y-2 pt-4 text-sm text-ink-muted">
+                {['Sources linked for every check', 'Unknown is never scored as good', 'Deadlines in AoE'].map((t) => (
+                  <li key={t} className="flex items-center gap-1.5"><CheckCircle2 aria-hidden="true" className="w-4 h-4 text-ink-faint" />{t}</li>
+                ))}
+              </ul>
             </div>
 
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white max-w-4xl mx-auto leading-tight">
-              Publish with Confidence. <br className="hidden sm:inline" />
-              <span className="bg-gradient-to-r from-blue-400 via-indigo-300 to-sky-300 bg-clip-text text-transparent">
-                Avoid Predatory Venues.
-              </span>
-            </h1>
-
-            <p className="text-base sm:text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed">
-              Researchly audits academic conferences across 9 credibility dimensions, aggregates verified 2026/2027 CFPs & webinars, tracks paper submissions in Kanban, and connects researchers worldwide.
-            </p>
-
-            {/* Hero Action Buttons */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-              <button
-                onClick={() => setIsAuthModalOpen(true)}
-                className="w-full sm:w-auto px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl text-base font-bold shadow-lg shadow-blue-600/30 transition flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <UserPlus className="w-5 h-5" />
-                <span>Create Free Academic Account</span>
-              </button>
-              <button
-                onClick={() => setIsAuthModalOpen(true)}
-                className="w-full sm:w-auto px-8 py-4 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-2xl text-base font-bold backdrop-blur-xs transition flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <LogIn className="w-5 h-5" />
-                <span>Sign In to Account</span>
-              </button>
-              <Link
-                to="/discover"
-                className="w-full sm:w-auto px-6 py-4 text-slate-300 hover:text-white rounded-2xl text-base font-semibold transition flex items-center justify-center gap-2"
-              >
-                <span>Browse Verified Catalog</span>
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-            </div>
-
-            {/* Hero Key Trust Badges */}
-            <div className="pt-8 border-t border-white/10 flex flex-wrap items-center justify-center gap-6 sm:gap-10 text-xs sm:text-sm text-slate-300">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>9-Dimension DBLP & CORE Audits</span>
+            {/* Upcoming deadlines panel */}
+            <div className="card p-5 bg-surface-muted">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-sans text-sm font-semibold text-ink">Next deadlines</h2>
+                <Link to="/discover" className="text-xs font-medium text-accent-700 hover:underline">View all</Link>
               </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>Real 2026/2027 Verified Deadlines</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>AI Paper-to-Venue Semantic Matcher</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>Kanban Submission Pipeline</span>
-              </div>
+              {upcomingCountdowns.length === 0 ? (
+                <p className="text-sm text-ink-muted py-6 text-center">No open deadlines loaded yet.</p>
+              ) : (
+                <ul className="divide-y divide-line">
+                  {upcomingCountdowns.slice(0, 5).map((conf) => {
+                    const d = daysLeft(conf);
+                    return (
+                      <li key={conf.id || conf.slug} className="py-3 flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <Link to={`/conferences/${conf.id || conf.slug}`} className="font-semibold text-ink hover:text-accent-700">
+                            {conf.name} <span className="font-normal text-ink-muted">{conf.edition}</span>
+                          </Link>
+                          <p className="text-xs text-ink-muted truncate">{deadlineLabel(conf)}</p>
+                        </div>
+                        <span className={`chip shrink-0 tabular-nums ${d <= 14 ? 'border-accent bg-accent text-accent-fg' : 'border-accent-200 bg-surface text-accent-700'}`}>
+                          {d === 0 ? 'Today' : `${d} d`}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </div>
           </div>
         </section>
 
-        {/* 4 CORE PLATFORM PILLARS */}
-        <section className="max-w-[1700px] w-full mx-auto px-6 lg:px-12">
-          <div className="text-center space-y-3 mb-10">
-            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-              Built for Faculty, Postdocs, and PhD Researchers
-            </h2>
-            <p className="text-sm sm:text-base text-slate-500 max-w-2xl mx-auto">
-              Everything you need to discover authentic research venues, protect your publication record, and collaborate.
-            </p>
+        {/* Pillars */}
+        <section className="max-w-page mx-auto px-4 sm:px-6 lg:px-8 pt-16" aria-labelledby="pillars-heading">
+          <div className="max-w-2xl mb-8">
+            <h2 id="pillars-heading" className="text-3xl">Built for faculty, postdocs and PhD researchers</h2>
+            <p className="text-ink-muted mt-2">Find legitimate venues, protect your publication record, and keep your submissions on schedule.</p>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* Pillar 1 */}
-            <div className="bg-white rounded-3xl border border-slate-200/90 p-8 shadow-xs hover:shadow-md transition space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-blue-100 text-blue-700 flex items-center justify-center">
-                <ShieldCheck className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-900">9-Dimension Credibility Audits</h3>
-              <p className="text-sm text-slate-600 leading-relaxed">
-                Evidence-based audits surface risk indicators (sponsorship claims, domain age, DBLP presence, pay-to-publish wording) with their sources, and clearly mark what could not be checked.
-              </p>
-              <Link to="/discover?risk=High" className="inline-flex items-center gap-1 text-sm font-semibold text-blue-600 hover:text-blue-800">
-                <span>View Predatory Warnings</span>
-                <ChevronRight className="w-4 h-4" />
-              </Link>
-            </div>
-
-            {/* Pillar 2 */}
-            <div className="bg-white rounded-3xl border border-slate-200/90 p-8 shadow-xs hover:shadow-md transition space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center">
-                <Compass className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-900">Verified Conferences & Webinars</h3>
-              <p className="text-sm text-slate-600 leading-relaxed">
-                Real submission deadlines with AoE countdowns, official OpenReview/IEEE portals, and open academic seminars from Stanford, MIT, and Berkeley.
-              </p>
-              <Link to="/discover" className="inline-flex items-center gap-1 text-sm font-semibold text-indigo-600 hover:text-indigo-800">
-                <span>Browse Event Catalog</span>
-                <ChevronRight className="w-4 h-4" />
-              </Link>
-            </div>
-
-            {/* Pillar 3 */}
-            <div className="bg-white rounded-3xl border border-slate-200/90 p-8 shadow-xs hover:shadow-md transition space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
-                <KanbanSquare className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-900">Kanban Paper Tracker</h3>
-              <p className="text-sm text-slate-600 leading-relaxed">
-                Track your active manuscripts across Bookmarked, Drafting, Under Review, and Accepted stages with 1-click tracking from any conference card.
-              </p>
-              <Link to="/applications" className="inline-flex items-center gap-1 text-sm font-semibold text-emerald-600 hover:text-emerald-800">
-                <span>See Submission Pipeline</span>
-                <ChevronRight className="w-4 h-4" />
-              </Link>
-            </div>
-
-            {/* Pillar 4 */}
-            <div className="bg-white rounded-3xl border border-slate-200/90 p-8 shadow-xs hover:shadow-md transition space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center">
-                <Users className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-900">Verified Faculty Network</h3>
-              <p className="text-sm text-slate-600 leading-relaxed">
-                Connect with prospective co-authors matched by research focus areas, share preprints, and join specialized discussion hubs.
-              </p>
-              <Link to="/network" className="inline-flex items-center gap-1 text-sm font-semibold text-purple-600 hover:text-purple-800">
-                <span>Explore Network</span>
-                <ChevronRight className="w-4 h-4" />
-              </Link>
-            </div>
-          </div>
+          <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {PILLARS.map(({ Icon, title, text, to, cta }) => (
+              <li key={title} className="card p-6 flex flex-col gap-3 transition hover:border-line-strong">
+                <div className="w-10 h-10 rounded-lg bg-accent-50 text-accent-700 flex items-center justify-center">
+                  <Icon aria-hidden="true" className="w-5 h-5" />
+                </div>
+                <h3 className="text-base font-semibold text-ink">{title}</h3>
+                <p className="text-sm text-ink-soft flex-1">{text}</p>
+                <Link to={to} className="inline-flex items-center gap-1 text-sm font-medium text-accent-700 hover:underline">
+                  {cta} <ChevronRight aria-hidden="true" className="w-4 h-4" />
+                </Link>
+              </li>
+            ))}
+          </ul>
         </section>
 
-        {/* UPCOMING REAL CFPS PREVIEW */}
-        <section className="max-w-[1700px] w-full mx-auto px-6 lg:px-12">
-          <div className="bg-white rounded-3xl border border-slate-200/90 p-8 sm:p-10 shadow-sm space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
-              <div>
-                <h3 className="text-xl sm:text-2xl font-bold text-slate-900">
-                  Upcoming Call for Papers & Academic Seminars
-                </h3>
-                <p className="text-sm text-slate-500 mt-0.5">
-                  Real deadlines verified against official conference websites and submission portals.
-                </p>
-              </div>
-              <Link
-                to="/discover"
-                className="px-5 py-2.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-xl text-sm font-semibold transition shrink-0 flex items-center gap-1"
-              >
-                <span>View All Audited Venues</span>
-                <ArrowRight className="w-4 h-4" />
-              </Link>
+        {/* Upcoming calls */}
+        <section className="max-w-page mx-auto px-4 sm:px-6 lg:px-8 pt-16" aria-labelledby="upcoming-heading">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-6">
+            <div>
+              <h2 id="upcoming-heading" className="text-3xl">Open calls for papers</h2>
+              <p className="text-ink-muted mt-1">Soonest deadline first. Risk shown only where evidence exists.</p>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {upcomingCountdowns.slice(0, 6).map(conf => {
-                const diffDays = daysLeft(conf);
-                return (
-                  <div key={conf.id || conf.slug} className="p-5 rounded-2xl border border-slate-200/80 bg-slate-50/50 hover:bg-white hover:shadow-md transition space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-base font-bold text-slate-900">{conf.name} {conf.edition}</span>
-                      <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-                        diffDays <= 14 ? 'bg-rose-100 text-rose-700' : 'bg-blue-50 text-blue-700'
-                      }`}>
-                        {diffDays > 0 ? `${diffDays}d left` : 'Passed'}
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-500 line-clamp-1">{conf.title || conf.field}</p>
-                    <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
-                      <span className="text-slate-600 font-medium">Due: {deadlineLabel(conf)}</span>
-                      <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                        {typeof conf.credibility_score === 'number' ? `${conf.credibility_score}/100` : 'Not assessed'} {conf.ranking}
-                      </span>
-                    </div>
+            <Link to="/discover" className="btn-secondary shrink-0">View all conferences <ArrowRight aria-hidden="true" className="w-4 h-4" /></Link>
+          </div>
+          <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {upcomingCountdowns.map((conf) => {
+              const d = daysLeft(conf);
+              return (
+                <li key={conf.id || conf.slug} className="relative card p-5 space-y-3 transition hover:border-line-strong hover:shadow-md">
+                  <div className="flex items-start justify-between gap-3">
+                    <h3 className="text-lg font-semibold text-ink">
+                      <Link to={`/conferences/${conf.id || conf.slug}`} className="after:absolute after:inset-0 hover:text-accent-700">
+                        {conf.name} <span className="font-normal text-ink-muted">{conf.edition}</span>
+                      </Link>
+                    </h3>
+                    <span className={`chip shrink-0 tabular-nums ${d <= 14 ? 'border-accent bg-accent text-accent-fg' : 'border-accent-200 bg-accent-50 text-accent-700'}`}>
+                      {d === 0 ? 'Due today' : `${d} days left`}
+                    </span>
                   </div>
-                );
-              })}
-            </div>
-          </div>
+                  <p className="text-sm text-ink-muted line-clamp-1">{conf.title || conf.field}</p>
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-line text-xs">
+                    <span className="text-ink-soft">Due {deadlineLabel(conf)}</span>
+                    <RiskBadge risk={conf.risk_level} score={conf.credibility_score} />
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
         </section>
 
-        {/* CALL TO ACTION BANNER */}
-        <section className="max-w-[1700px] w-full mx-auto px-6 lg:px-12">
-          <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-slate-900 rounded-3xl p-10 sm:p-14 text-white text-center space-y-5 shadow-xl">
-            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
-              Ready to Accelerate Your Academic Career?
-            </h2>
-            <p className="text-base sm:text-lg text-blue-100 max-w-2xl mx-auto leading-relaxed">
-              Create your verified profile today. Never miss an AoE submission deadline or fall victim to predatory clone conferences.
-            </p>
-            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-4">
-              <button
-                onClick={() => setIsAuthModalOpen(true)}
-                className="px-8 py-3.5 bg-white text-blue-700 hover:bg-blue-50 rounded-2xl text-base font-bold shadow-lg transition cursor-pointer"
-              >
-                Sign Up / Sign In Now
+        {/* Call to action */}
+        <section className="max-w-page mx-auto px-4 sm:px-6 lg:px-8 pt-16">
+          <div className="card p-8 sm:p-12 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="max-w-xl">
+              <h2 className="text-3xl">Never miss a deadline</h2>
+              <p className="text-ink-muted mt-2">
+                Create a free profile to track submissions, get matched venues for your paper, and connect with co-authors.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 shrink-0">
+              <button type="button" onClick={() => setIsAuthModalOpen(true)} className="btn-primary px-5 py-3 cursor-pointer">
+                <LogIn aria-hidden="true" className="w-4 h-4" /> Sign up or sign in
               </button>
-              <Link
-                to="/discover"
-                className="px-8 py-3.5 bg-blue-600/50 hover:bg-blue-600 text-white rounded-2xl text-base font-semibold border border-white/20 transition"
-              >
-                Explore Catalog First
-              </Link>
+              <Link to="/discover" className="btn-secondary px-5 py-3">Explore the catalogue</Link>
             </div>
           </div>
         </section>
@@ -410,7 +334,7 @@ export default function HomePage() {
     <div className="max-w-[1700px] w-full mx-auto px-6 lg:px-12 py-8 space-y-6">
       {/* Onboarding Alert for First-Time Users */}
       {user && user.is_onboarded === false && (
-        <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border border-blue-200 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-2xs">
+        <div className="bg-accent-50 border border-blue-200 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-2xs">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0">
               <Sparkles className="w-5 h-5" />
@@ -439,9 +363,9 @@ export default function HomePage() {
         {/* ================= LEFT RAIL: User Academic Identity (3 cols) ================= */}
         <aside className="lg:col-span-3 space-y-6">
           {/* User Profile Card */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden hover:shadow-md transition">
+          <div className="bg-surface rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden hover:shadow-md transition">
             {/* Header Cover */}
-            <div className="h-24 bg-gradient-to-r from-blue-700 via-indigo-700 to-slate-900 relative">
+            <div className="bg-slate-200 h-24 relative">
               <div
                 className="absolute inset-0 opacity-15"
                 style={{
@@ -487,19 +411,19 @@ export default function HomePage() {
 
             {/* Metric Grid (Zero Fake Data) */}
             <div className="p-4 bg-slate-50/70 border-b border-slate-100 grid grid-cols-3 gap-2 text-center">
-              <div className="p-2.5 bg-white rounded-xl border border-slate-200/80 shadow-2xs">
+              <div className="p-2.5 bg-surface rounded-xl border border-slate-200/80 shadow-2xs">
                 <span className="block text-xs uppercase font-bold text-slate-400">h-index</span>
                 <span className="text-base font-extrabold text-blue-600 font-mono">
                   {user.h_index ?? 0}
                 </span>
               </div>
-              <div className="p-2.5 bg-white rounded-xl border border-slate-200/80 shadow-2xs">
+              <div className="p-2.5 bg-surface rounded-xl border border-slate-200/80 shadow-2xs">
                 <span className="block text-xs uppercase font-bold text-slate-400">Citations</span>
                 <span className="text-base font-extrabold text-slate-800 font-mono">
                   {user.citations_count ? (user.citations_count >= 1000 ? `${(user.citations_count / 1000).toFixed(1)}k` : user.citations_count) : 0}
                 </span>
               </div>
-              <div className="p-2.5 bg-white rounded-xl border border-slate-200/80 shadow-2xs">
+              <div className="p-2.5 bg-surface rounded-xl border border-slate-200/80 shadow-2xs">
                 <span className="block text-xs uppercase font-bold text-slate-400">Tracked</span>
                 <span className="text-base font-extrabold text-emerald-600 font-mono">
                   {applicationsCount || 0}
@@ -571,7 +495,7 @@ export default function HomePage() {
           </div>
 
           {/* Research Hubs Box */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-sm space-y-3">
+          <div className="bg-surface rounded-2xl border border-slate-200/90 p-5 shadow-sm space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
                 <TrendingUp className="w-4 h-4 text-blue-600" />
@@ -602,7 +526,7 @@ export default function HomePage() {
         {/* ================= CENTER RAIL: Post Composer & Social Feed (6 cols) ================= */}
         <main className="lg:col-span-6 space-y-6">
           {/* Post Composer Card */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-sm">
+          <div className="bg-surface rounded-2xl border border-slate-200/90 p-6 shadow-sm">
             <div className="flex items-start gap-4">
               <img
                 src={user?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.full_name || 'U')}&background=4f46e5&color=fff`}
@@ -647,7 +571,7 @@ export default function HomePage() {
           {loading ? (
             <div className="space-y-4">
               {[1, 2].map((n) => (
-                <div key={n} className="bg-white rounded-2xl border border-slate-200 p-6 animate-pulse space-y-3">
+                <div key={n} className="bg-surface rounded-2xl border border-slate-200 p-6 animate-pulse space-y-3">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 bg-slate-200 rounded-xl"></div>
                     <div className="space-y-1.5 flex-1">
@@ -660,7 +584,7 @@ export default function HomePage() {
               ))}
             </div>
           ) : posts.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center space-y-3 shadow-xs">
+            <div className="bg-surface rounded-2xl border border-slate-200 p-12 text-center space-y-3 shadow-xs">
               <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
                 <MessageSquare className="w-7 h-7" />
               </div>
@@ -674,7 +598,7 @@ export default function HomePage() {
               <article
                 key={post.id}
                 id={`post-${post.id}`}
-                className="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-xs transition hover:border-slate-300"
+                className="bg-surface rounded-2xl border border-slate-200/90 p-6 shadow-xs transition hover:border-slate-300"
               >
                 {/* Author Info */}
                 <div className="flex items-center justify-between mb-3.5">
@@ -798,7 +722,7 @@ export default function HomePage() {
         {/* ================= RIGHT RAIL: Real Deadlines & Credibility (3 cols) ================= */}
         <aside className="lg:col-span-3 space-y-6">
           {/* Dynamic Deadline Countdowns */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-sm space-y-4">
+          <div className="bg-surface rounded-2xl border border-slate-200/90 p-6 shadow-sm space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
                 <Clock className="w-4 h-4 text-blue-600" />
@@ -839,7 +763,7 @@ export default function HomePage() {
                     <div className="flex items-center justify-between pt-1.5 border-t border-slate-100/60 text-xs">
                       <span className="text-slate-400">{deadlineLabel(conf)}</span>
                       <span className="font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">
-                        {typeof conf.credibility_score === 'number' ? `${conf.credibility_score}/100` : 'Not assessed'}
+                        {typeof conf.credibility_score === 'number' ? `${conf.credibility_score}/100` : 'Not enough evidence'}
                       </span>
                     </div>
                   </div>
@@ -849,7 +773,7 @@ export default function HomePage() {
           </div>
 
           {/* Credibility Verification Alert Box */}
-          <div className="bg-gradient-to-br from-indigo-50/80 via-blue-50/50 to-white border border-blue-200/80 rounded-2xl p-6 shadow-sm space-y-2.5">
+          <div className="bg-accent-50 border border-blue-200/80 rounded-2xl p-6 shadow-sm space-y-2.5">
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-blue-700 shrink-0" />
               <h4 className="text-sm font-bold text-blue-900">Credibility Verification</h4>

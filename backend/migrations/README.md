@@ -1,7 +1,7 @@
 # Database migrations
 
-SQL in this folder is **never run by the app**. Apply it yourself, **in numeric order (001, 002, then 003)**, against your
-Supabase project. A fresh install from `backend/schema.sql` already matches 001 + 002 + 003; the migrations are for databases
+SQL in this folder is **never run by the app**. Apply it yourself, **in numeric order (001 through 006)**, against your
+Supabase project. A fresh install from `backend/schema.sql` already matches 001–006; the migrations are for databases
 created from an older `schema.sql`.
 
 | File | What it does |
@@ -9,6 +9,9 @@ created from an older `schema.sql`.
 | `001_pipeline_fields.sql` | Adds the pipeline/provenance columns written by `mapPipelineRecord` (and the aggregate `committee_summary`) to `public.conferences`; removes the invented defaults `credibility_score 90` and `ranking 'Core A*'` (both now nullable, no default); sets `risk_level` default to `'Not assessed'`. |
 | `002_credibility_audits.sql` | Makes `credibility_audits.overall_score` and all nine dimension scores nullable with no default (no more 85-95 defaults), and adds `engine_version`, `coverage`, `checks` (jsonb) and `limitations` (jsonb). |
 | `003_ccfddl_fields.sql` | Adds `conferences.dblp_key` (text), `ranking_claims` (jsonb, default `[]`), `deadline_at` (timestamptz, set only when the deadline's time zone is known) and `deadline_precision` (`datetime`/`date`). |
+| `004_location_fields.sql` | Adds `conferences.city` and `country` (text, NULL when not stated), used by the Discover page's location filter. |
+| `005_evidence.sql` | Adds `conferences.evidence` (jsonb, default `{}`): pipeline evidence for the credibility engine (quote-verified statements, risk phrases, lookup results as aggregate counts). |
+| `006_provisional_score.sql` | Adds `credibility_audits.provisional_score` (integer): the figure computed below the 0.30 coverage threshold, when `overall_score` is NULL. |
 
 ## How to apply
 
@@ -21,6 +24,9 @@ idempotent (`ADD COLUMN IF NOT EXISTS`), so re-running it is harmless.
 psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f backend/migrations/001_pipeline_fields.sql
 psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f backend/migrations/002_credibility_audits.sql
 psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f backend/migrations/003_ccfddl_fields.sql
+psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f backend/migrations/004_location_fields.sql
+psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f backend/migrations/005_evidence.sql
+psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f backend/migrations/006_provisional_score.sql
 ```
 
 Each file runs in its own transaction and is idempotent, so a partial run can simply be repeated.

@@ -58,9 +58,11 @@ export function mapPipelineRecord(rec) {
     end_date: isoDay(d.conference_end),
     location: loc.is_virtual && !loc.country ? 'Virtual' : (place || null),
     venue: loc.venue || null,
+    city: loc.city || null,
+    country: loc.country || null,
     format: loc.is_virtual ? (loc.country ? 'Hybrid' : 'Virtual') : 'In-Person',
     publisher: rec.publisher || null,
-    organizer: null,
+    organizer: enrichedField(rec, 'organizer')?.value || null,
     fees: rec.fees?.notes || null,
     ranking: rec.ranking_claims?.[0] ? `${rec.ranking_claims[0].system} ${rec.ranking_claims[0].value}` : null,
     official_url: rec.website_url,
@@ -87,7 +89,45 @@ export function mapPipelineRecord(rec) {
       : [],
     // NOTE: rec.committee is deliberately NOT mapped: member names never reach the store/DB/API.
     // Use committeeForAudit(rec) to pass it transiently to the audit.
-    pipeline_conference_id: rec.conference_id
+    pipeline_conference_id: rec.conference_id,
+    // Evidence gathered by the pipeline for the credibility engine (migrations/005). Every quote was verified
+    // verbatim against the page it came from; lookups hold aggregate counts only (no committee names).
+    evidence: buildEvidence(rec)
+  };
+}
+
+const str = (v, n = 400) => (typeof v === 'string' ? v.slice(0, n) : null);
+
+/** A grounded-enrichment field that passed the quote gate and was applied: { value, quote, source_url } or null. */
+export function enrichedField(rec, name) {
+  const f = (rec.enrichment?.fields || []).find((x) => x && x.field === name);
+  if (!f || typeof f.quote !== 'string') return null;
+  return { value: typeof f.value === 'string' ? str(f.value) : f.value, quote: str(f.quote), source_url: str(f.source_url, 500) };
+}
+
+function pipelineLookup(l) {
+  if (!l || typeof l !== 'object') return null;
+  return { ok: l.ok === true, error: str(l.error, 200), data: l.data && typeof l.data === 'object' ? l.data : {},
+    evidence_url: str(l.evidence_url, 500), checked_at: str(l.checked_at, 40) };
+}
+
+export function buildEvidence(rec) {
+  const e = rec.enrichment || {};
+  const lk = rec.lookups || null;
+  const datasetUrl = (rec.provenance?.source_urls || []).find((u) => /github\.com\/ccfddl\//.test(u)) || null;
+  return {
+    series_years: (rec.series_years || []).filter((y) => Number.isInteger(y) && y >= 1950 && y <= 2100),
+    series_source_url: datasetUrl,
+    organizer: enrichedField(rec, 'organizer'),
+    peer_review: enrichedField(rec, 'peer_review_statement'),
+    fee_statement: enrichedField(rec, 'registration_fee_text'),
+    risk_phrases: (rec.risk_phrases || []).filter((r) => r && r.category && r.quote)
+      .map((r) => ({ category: String(r.category), quote: str(r.quote), source_url: str(r.source_url, 500), method: str(r.method, 20) })),
+    pages_read: (e.pages_read || []).filter((u) => typeof u === 'string').slice(0, 10),
+    enrichment_status: str(e.status, 40),
+    enrichment_checked_at: str(e.checked_at, 40),
+    rejected_quotes: Number.isInteger(e.hallucination_rejected) ? e.hallucination_rejected : 0,
+    lookups: lk ? { dblp: pipelineLookup(lk.dblp), rdap: pipelineLookup(lk.rdap), committee: pipelineLookup(lk.committee) } : null
   };
 }
 

@@ -40,6 +40,7 @@ class RawRecord(BaseModel):
     committee: list[dict] = Field(default_factory=list)  # {"name", "affiliation"|None}; names only, no contact data
     dblp_key: Optional[str] = None  # e.g. "aaai" (dblp.org/db/conf/aaai/), from a structured dataset only
     dataset_version: Optional[str] = None  # e.g. the ccfddl git commit SHA the record was read from
+    series_years: list[int] = Field(default_factory=list)  # years this series is listed in the structured dataset
     ranking: list[dict] = Field(default_factory=list)
     tracks: list[dict] = Field(default_factory=list)  # {"name": str, "deadline_text": str|None}
     is_virtual: Optional[bool] = None
@@ -134,6 +135,42 @@ class EnrichedField(_Strict):
     extracted_at: str
 
 
+RiskCategory = Literal["guaranteed_acceptance", "publish_in_days", "fast_review", "fee_only", "no_named_committee"]
+
+
+class RiskPhrase(_Strict):
+    """A risk phrase found on a page we fetched. The quote is verbatim from that page; the category is confirmed by
+    code (extractors/risk_phrases.py), never taken from the model alone."""
+    category: RiskCategory
+    quote: str
+    source_url: str
+    method: Literal["pattern", "llm_grounded"]
+    found_at: str
+
+
+class RejectedQuote(_Strict):
+    """An LLM item dropped by the verification gate (kept for audit/eval; email local parts redacted)."""
+    field: str
+    quote: Optional[str] = None
+    reason: str
+
+
+class Lookup(_Strict):
+    """Result of one live evidence lookup (DBLP SPARQL, RDAP, OpenAlex). ok=False -> engine reports not_checked."""
+    ok: bool
+    error: Optional[str] = None
+    data: dict[str, Any] = Field(default_factory=dict)
+    evidence_url: Optional[str] = None
+    checked_at: str
+
+
+class Lookups(_Strict):
+    dblp: Optional[Lookup] = None
+    rdap: Optional[Lookup] = None
+    committee: Optional[Lookup] = None   # AGGREGATE counts only, never names
+    input_hash: Optional[str] = None
+
+
 EnrichmentStatus = Literal["enriched", "no_verified_fields", "cached_unchanged", "skipped_robots", "skipped_fetch_error",
                            "skipped_no_api_key", "skipped_not_reviewed", "llm_error"]
 
@@ -145,6 +182,8 @@ class Enrichment(_Strict):
     model: Optional[str] = None
     fields: list[EnrichedField] = Field(default_factory=list)
     hallucination_rejected: int = 0
+    pages_read: list[str] = Field(default_factory=list)       # every page whose full text was scanned
+    rejected: list[RejectedQuote] = Field(default_factory=list)
 
 
 class Dedup(_Strict):
@@ -173,6 +212,11 @@ class Conference(_Strict):
     dblp_key: Optional[str] = None
     proceedings_series: Optional[str] = None        # grounded LLM enrichment only
     contact_email_domain: Optional[str] = None      # domain only (never the address), grounded LLM enrichment only
+    organizer: Optional[str] = None                 # grounded LLM enrichment only
+    peer_review_statement: Optional[str] = None     # verbatim quote, grounded LLM enrichment only
+    risk_phrases: list[RiskPhrase] = Field(default_factory=list)
+    series_years: list[int] = Field(default_factory=list)
+    lookups: Optional[Lookups] = None
     enrichment: Optional[Enrichment] = None
     provenance: Provenance
     raw_snapshot_ref: Optional[str] = None

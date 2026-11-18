@@ -89,7 +89,7 @@ export default function PaperReviewPage() {
   return (
     <div className="max-w-[1700px] w-full mx-auto px-6 lg:px-12 py-8 space-y-6">
       {/* Header */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-surface rounded-2xl border border-slate-200/90 p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center">
@@ -124,7 +124,7 @@ export default function PaperReviewPage() {
 
         {/* ---------------- LEFT: Submission / Upload Form (5 cols) ---------------- */}
         <div className="lg:col-span-5 space-y-4">
-          <div className="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-sm space-y-4">
+          <div className="bg-surface rounded-2xl border border-slate-200/90 p-6 shadow-sm space-y-4">
             <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5 pb-3 border-b border-slate-100">
               <UploadCloud className="w-4 h-4 text-blue-600" />
               <span>Submit Manuscript for Evaluation</span>
@@ -189,7 +189,7 @@ export default function PaperReviewPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white rounded-xl font-semibold shadow-sm flex items-center justify-center gap-2 transition disabled:opacity-50 cursor-pointer"
+                className="bg-accent hover:bg-accent-hover w-full py-3 text-white rounded-xl font-semibold shadow-sm flex items-center justify-center gap-2 transition disabled:opacity-50 cursor-pointer"
               >
                 <Sparkles className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                 <span>{loading ? 'Analyzing with Meta-Reviewer...' : 'Run AI Peer Review'}</span>
@@ -199,7 +199,7 @@ export default function PaperReviewPage() {
 
           {/* Past Review History */}
           {history.length > 0 && (
-            <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-sm space-y-2">
+            <div className="bg-surface rounded-2xl border border-slate-200/90 p-4 shadow-sm space-y-2">
               <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Evaluation History</h3>
               <div className="space-y-1.5">
                 {history.map((h) => (
@@ -222,7 +222,7 @@ export default function PaperReviewPage() {
         {/* ---------------- RIGHT: Review Results Dashboard (7 cols) ---------------- */}
         <div className="lg:col-span-7 space-y-5">
           {!reviewResult ? (
-            <div className="bg-white rounded-2xl border border-slate-200/90 p-12 text-center space-y-3 shadow-sm">
+            <div className="bg-surface rounded-2xl border border-slate-200/90 p-12 text-center space-y-3 shadow-sm">
               <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto">
                 <FileCheck2 className="w-7 h-7" />
               </div>
@@ -234,7 +234,7 @@ export default function PaperReviewPage() {
           ) : (
             <div className="space-y-5">
               {/* Score & Verdict Banner */}
-              <div className="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="bg-surface rounded-2xl border border-slate-200/90 p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Review Report</span>
                   <h3 className="text-base font-bold text-slate-900 mt-0.5">{reviewResult.title}</h3>
@@ -253,7 +253,7 @@ export default function PaperReviewPage() {
               </div>
 
               {/* Executive Summary */}
-              <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-sm space-y-2">
+              <div className="bg-surface rounded-2xl border border-slate-200/90 p-5 shadow-sm space-y-2">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <BookOpen className="w-3.5 h-3.5 text-blue-600" />
                   <span>Executive Meta-Review Summary</span>
@@ -266,7 +266,7 @@ export default function PaperReviewPage() {
               {/* Strengths & Weaknesses Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Strengths */}
-                <div className="bg-white rounded-2xl border border-emerald-200/80 p-5 shadow-sm space-y-3">
+                <div className="bg-surface rounded-2xl border border-emerald-200/80 p-5 shadow-sm space-y-3">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-800 flex items-center gap-1.5">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                     <span>Identified Strengths</span>
@@ -282,7 +282,7 @@ export default function PaperReviewPage() {
                 </div>
 
                 {/* Weaknesses */}
-                <div className="bg-white rounded-2xl border border-amber-200/80 p-5 shadow-sm space-y-3">
+                <div className="bg-surface rounded-2xl border border-amber-200/80 p-5 shadow-sm space-y-3">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-amber-800 flex items-center gap-1.5">
                     <AlertTriangle className="w-4 h-4 text-amber-600" />
                     <span>Methodological Limitations</span>
@@ -299,7 +299,7 @@ export default function PaperReviewPage() {
               </div>
 
               {/* Methodology Critique & Literature Gaps */}
-              <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-sm space-y-4 text-xs">
+              <div className="bg-surface rounded-2xl border border-slate-200/90 p-5 shadow-sm space-y-4 text-xs">
                 <div>
                   <h4 className="font-bold text-slate-900 mb-1.5">Algorithmic & Experimental Critique</h4>
                   <p className="text-slate-600 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">
@@ -319,7 +319,7 @@ export default function PaperReviewPage() {
 
               {/* Actionable Revision Suggestions */}
               {reviewResult.revision_suggestions && reviewResult.revision_suggestions.length > 0 && (
-                <div className="bg-white rounded-2xl border border-blue-200/80 p-5 shadow-sm space-y-3">
+                <div className="bg-surface rounded-2xl border border-blue-200/80 p-5 shadow-sm space-y-3">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-blue-900 flex items-center gap-1.5">
                     <Sparkles className="w-4 h-4 text-blue-600" />
                     <span>Actionable Revision Suggestions for Acceptance</span>
@@ -339,7 +339,7 @@ export default function PaperReviewPage() {
 
               {/* Recommended Conferences */}
               {reviewResult.recommended_conferences && reviewResult.recommended_conferences.length > 0 && (
-                <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-sm space-y-3">
+                <div className="bg-surface rounded-2xl border border-slate-200/90 p-5 shadow-sm space-y-3">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
                     <Award className="w-4 h-4 text-indigo-600" />
                     <span>Top Target Venues for This Manuscript</span>

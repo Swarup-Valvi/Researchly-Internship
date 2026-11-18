@@ -32,7 +32,7 @@ ccfddl data:
 
 `mapPipelineRecord` (src/services/ingestService.js) maps pipeline records, including `dblp_key` and
 `ranking_claims`. Committee names are never mapped or stored. Database changes are in `migrations/` (apply
-001 → 002 → 003); `schema.sql` matches them for fresh installs.
+001 → 002 → 003 → 004 → 005 → 006); `schema.sql` matches them for fresh installs.
 
 ## Cutover to live data
 

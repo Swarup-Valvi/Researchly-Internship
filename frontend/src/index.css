@@ -2,82 +2,95 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Tokens live in tailwind.config.js (colours as CSS variables, type scale, radius, shadows). */
+
 @layer base {
   html {
     font-size: 16px;
+    -webkit-text-size-adjust: 100%;
   }
 
   body {
-    @apply bg-slate-50 text-slate-800 antialiased;
+    @apply bg-canvas text-ink font-sans antialiased;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     line-height: 1.6;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  /* Serif for page and section headings; UI text stays in Inter. */
+  h1, h2 {
+    @apply font-serif font-semibold tracking-normal text-ink;
+    line-height: 1.2;
+  }
+  h3, h4, h5, h6 {
     @apply tracking-tight;
-    line-height: 1.25;
+    line-height: 1.3;
   }
 
-  /* Better focus visible */
+  /* Visible, consistent keyboard focus (WCAG 2.4.7). */
+  :focus { outline: none; }
   :focus-visible {
-    @apply outline-2 outline-blue-500 outline-offset-2;
+    outline: 2px solid rgb(var(--c-accent-600));
+    outline-offset: 2px;
+    border-radius: 0.25rem;
   }
 
-  /* Better input defaults */
   input, textarea, select {
     @apply text-base;
   }
+  ::placeholder { color: rgb(var(--c-slate-400)); opacity: 1; }
+
+  a { text-underline-offset: 3px; }
 }
 
 @layer components {
-  /* Clean input base */
   .input-base {
-    @apply w-full px-3.5 py-2.5 text-base border border-slate-200 rounded-xl focus:border-blue-500 focus:outline-none transition;
+    @apply w-full px-3.5 py-2.5 text-base bg-surface text-ink border border-line rounded-lg focus:border-accent transition-colors duration-150;
   }
-
-  /* Primary button */
   .btn-primary {
-    @apply px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl shadow-sm transition disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-accent hover:bg-accent-hover text-accent-fg text-sm font-semibold rounded-lg transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed;
   }
-
-  /* Secondary button */
   .btn-secondary {
-    @apply px-5 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-medium rounded-xl transition;
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-surface border border-line hover:bg-surface-muted text-ink-soft text-sm font-medium rounded-lg transition-colors duration-150;
   }
-
-  /* Card base */
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium text-ink-soft hover:bg-surface-sunken rounded-lg transition-colors duration-150;
+  }
   .card {
-    @apply bg-white rounded-2xl border border-slate-200 shadow-sm;
+    @apply bg-surface rounded-xl border border-line transition-[border-color,box-shadow] duration-150;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-xs font-medium leading-5 whitespace-nowrap transition-colors duration-150;
+  }
+  .eyebrow {
+    @apply text-2xs font-semibold uppercase tracking-[0.08em] text-ink-muted;
+  }
+  .skip-link {
+    @apply sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:px-4 focus:py-2 focus:bg-surface focus:text-ink focus:rounded-lg focus:border focus:border-line;
   }
 }
 
 /* Subtle scrollbar */
-::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 9999px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgb(var(--c-slate-300)); border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: rgb(var(--c-slate-400)); }
 
-/* Fade-in animation for modals */
 @keyframes fadeIn {
-  from { opacity: 0; transform: scale(0.97); }
+  from { opacity: 0; transform: scale(0.98); }
   to { opacity: 1; transform: scale(1); }
 }
+.animate-modal-in { animation: fadeIn 0.15s ease-out; }
 
-.animate-modal-in {
-  animation: fadeIn 0.15s ease-out;
-}
-
-/* Line clamp utilities */
 .line-clamp-1 { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; }
 .line-clamp-2 { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .line-clamp-3 { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+
+/* Respect reduced-motion preferences (WCAG 2.3.3). */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -30,6 +30,9 @@ REPO_URL = "https://github.com/ccfddl/ccf-deadlines.git"
 WEB_BASE = "https://github.com/ccfddl/ccf-deadlines/blob/main/"
 _DBLP_KEY = re.compile(r"^[A-Za-z0-9_-]{1,40}$")
 RANK_SYSTEMS = {"core": "CORE", "ccf": "CCF"}   # thcpl (Tsinghua list) is not used
+# Bump when read_dataset starts emitting new fields: an unchanged dataset commit is then re-read once, so records
+# written by an older parser get the new fields (v2: series_years).
+PARSER_VERSION = 2
 
 
 def _val(v) -> Optional[str]:
@@ -105,7 +108,7 @@ class CCFDDLScraper(BaseScraper):
         state = self.store.state.setdefault("ccfddl", {})
         if not self.options.get("ccfddl_path") and not full:
             sha = self.remote_sha()
-            if sha and state.get("sha") == sha:
+            if sha and state.get("sha") == sha and state.get("parser_version") == PARSER_VERSION:
                 self.metrics.inc(self.name, "pages_unchanged")
                 log(self.logger, logging.INFO, "ccfddl unchanged; skipping", sha=sha)
                 return []
@@ -113,12 +116,12 @@ class CCFDDLScraper(BaseScraper):
         if root is None:
             return []
         try:
-            if not full and state.get("sha") == sha:
+            if not full and state.get("sha") == sha and state.get("parser_version") == PARSER_VERSION:
                 self.metrics.inc(self.name, "pages_unchanged")
                 log(self.logger, logging.INFO, "ccfddl unchanged; skipping", sha=sha)
                 return []
             records = self.read_dataset(root, sha, limit)
-            state.update(sha=sha, processed_at=datetime.now(timezone.utc).isoformat(timespec="seconds"), records=len(records))
+            state.update(sha=sha, parser_version=PARSER_VERSION, processed_at=datetime.now(timezone.utc).isoformat(timespec="seconds"), records=len(records))
             return records
         finally:
             if tmp:
@@ -147,6 +150,32 @@ class CCFDDLScraper(BaseScraper):
         return out
 
     @staticmethod
+    def series_key(c) -> Optional[tuple[str, str]]:
+        """(ccfddl file URL, normalised acronym) for a Conference, or None if it did not come from ccfddl."""
+        url = next((u for u in c.provenance.source_urls if u.startswith(WEB_BASE)), None)
+        acr = re.sub(r"[^a-z0-9]", "", (c.acronym or "").lower())
+        return (url, acr) if url and acr else None
+
+    @staticmethod
+    def fill_series_years(confs) -> int:
+        """Series matching across records: every record of the same ccfddl series gets the union of the series
+        years recorded on any of its records plus the records' own years. Fixes records written before
+        series_years existed (e.g. DAC 2027 had none although DAC 2025-2027 are all in the data).
+        Returns the number of records whose series_years changed."""
+        groups: dict = {}
+        for c in confs:
+            k = CCFDDLScraper.series_key(c)
+            if k:
+                groups.setdefault(k, set()).update(c.series_years, [c.year])
+        changed = 0
+        for c in confs:
+            k = CCFDDLScraper.series_key(c)
+            if k and sorted(groups[k]) != c.series_years:
+                c.series_years = sorted(groups[k])
+                changed += 1
+        return changed
+
+    @staticmethod
     def records_for(e: dict, rel: str, sha: str, now: str, min_year: int) -> list[RawRecord]:
         if not isinstance(e, dict):
             return []
@@ -157,6 +186,9 @@ class CCFDDLScraper(BaseScraper):
             if v and v.upper() != "N":
                 ranks.append({"system": system, "value": v, "source_url": url})
         dblp = _val(e.get("dblp"))
+        # Every year this series appears in the dataset (including years < min_year): evidence for the history
+        # check. It is a lower bound on the series' age (the dataset only goes back so far), never a guess.
+        series_years = sorted({c["year"] for c in e.get("confs") or [] if isinstance(c, dict) and isinstance(c.get("year"), int)})
         out = []
         for c in e.get("confs") or []:
             if not isinstance(c, dict) or not isinstance(c.get("year"), int) or c["year"] < min_year:
@@ -178,6 +210,7 @@ class CCFDDLScraper(BaseScraper):
                 ranking=ranks,
                 dblp_key=dblp if dblp and _DBLP_KEY.match(dblp) else None,
                 dataset_version=f"ccfddl@{sha}",
+                series_years=series_years,
                 extraction_method="structured",
                 raw_snapshot_ref=f"ccfddl@{sha}:{rel}",
                 scraped_at=now,
