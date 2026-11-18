@@ -76,7 +76,11 @@ def merge(group: list[Conference]) -> Conference:
     for m in (m for c in g for m in c.committee):  # first listing of a name wins (group is in precedence order)
         members.setdefault(m.name.lower(), m)
     out.committee = list(members.values())
-    for f in ("dblp_key", "proceedings_series", "contact_email_domain", "enrichment"):
+    out.series_years = sorted({y for c in g for y in c.series_years})
+    rp = {(r.category, r.quote): r for c in g for r in c.risk_phrases}
+    out.risk_phrases = list(rp.values())
+    for f in ("dblp_key", "proceedings_series", "contact_email_domain", "enrichment", "organizer", "peer_review_statement",
+              "lookups"):
         setattr(out, f, _first(getattr(c, f) for c in g))
     out.provenance.dataset_version = _first(c.provenance.dataset_version for c in g)
     seen_c, conflicts = set(), []

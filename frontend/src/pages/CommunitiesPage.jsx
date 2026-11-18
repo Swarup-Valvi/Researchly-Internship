@@ -37,7 +37,7 @@ export default function CommunitiesPage() {
   return (
     <div className="max-w-[1700px] w-full mx-auto px-6 lg:px-12 py-8 space-y-6">
       {/* Header */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 p-6 sm:p-8 shadow-sm">
+      <div className="bg-surface rounded-2xl border border-slate-200/90 p-6 sm:p-8 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
@@ -68,7 +68,7 @@ export default function CommunitiesPage() {
           { label: 'Researchers', value: communities.reduce((acc, c) => acc + (c.members_count || 0), 0).toLocaleString() || '14,000+', icon: Users, color: 'text-emerald-600 bg-emerald-50' },
           { label: 'Discussions', value: 'Live', icon: MessageSquare, color: 'text-purple-600 bg-purple-50' },
         ].map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-sm flex items-center gap-3">
+          <div key={label} className="bg-surface rounded-2xl border border-slate-200/90 p-4 shadow-sm flex items-center gap-3">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${color}`}>
               <Icon className="w-5 h-5" />
             </div>
@@ -84,7 +84,7 @@ export default function CommunitiesPage() {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3, 4].map(n => (
-            <div key={n} className="bg-white rounded-2xl border border-slate-200 p-6 h-64 animate-pulse" />
+            <div key={n} className="bg-surface rounded-2xl border border-slate-200 p-6 h-64 animate-pulse" />
           ))}
         </div>
       ) : (
@@ -93,7 +93,7 @@ export default function CommunitiesPage() {
             const channels = CHANNEL_DEFAULTS[c.id] || c.channels || [];
             const colorClass = TOPIC_COLORS[c.field] || 'bg-blue-100 text-blue-700 border-blue-200';
             return (
-              <div key={c.id} className="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-xs flex flex-col justify-between hover:border-blue-300 hover:shadow-md transition group">
+              <div key={c.id} className="bg-surface rounded-2xl border border-slate-200/90 p-6 shadow-xs flex flex-col justify-between hover:border-blue-300 hover:shadow-md transition group">
                 <div>
                   <div className="flex items-center justify-between mb-4">
                     <span className={`text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg border ${colorClass}`}>
@@ -154,14 +154,14 @@ export default function CommunitiesPage() {
 
       {/* Call to Action for guests */}
       {!user && (
-        <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-slate-900 rounded-2xl p-8 text-white text-center space-y-4">
+        <div className="bg-slate-900 rounded-2xl p-8 text-white text-center space-y-4">
           <h3 className="text-xl font-bold">Join the Academic Conversation</h3>
           <p className="text-sm text-blue-100 max-w-xl mx-auto">
             Sign in to participate in CFP discussions, share preprints, ask peer reviewers, and get real-time deadline alerts in your research community.
           </p>
           <button
             onClick={() => setIsAuthModalOpen(true)}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-white text-blue-700 rounded-xl text-sm font-bold shadow-md hover:bg-blue-50 transition cursor-pointer"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-surface text-blue-700 rounded-xl text-sm font-bold shadow-md hover:bg-blue-50 transition cursor-pointer"
           >
             <LogIn className="w-4 h-4" />
             Sign In / Create Account

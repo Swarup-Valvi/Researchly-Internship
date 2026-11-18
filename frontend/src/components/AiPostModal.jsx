@@ -43,7 +43,7 @@ export default function AiPostModal({ isOpen, onClose, onSelectDraft }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden">
+      <div className="bg-surface rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden">
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
           <div className="flex items-center gap-2">
@@ -55,7 +55,7 @@ export default function AiPostModal({ isOpen, onClose, onSelectDraft }) {
               <p className="text-xs text-slate-500">Draft high-impact academic posts powered by LLM</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+          <button type="button" onClick={onClose} aria-label="Close" className="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
             <X className="w-5 h-5" />
           </button>
         </div>

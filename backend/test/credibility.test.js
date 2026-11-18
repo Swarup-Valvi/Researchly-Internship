@@ -16,8 +16,8 @@ test('unchecked dimensions are null, never defaulted to a good score', () => {
   const a = evaluateConferenceCredibility({ id: 'x', official_url: 'https://conf.example.org' });
   assert.equal(a.tpc_score, null);
   assert.equal(a.venue_score, null);
-  assert.equal(a.domain_score, 100);
-  assert.equal(byId(a, 'https_transport').status, 'pass');
+  assert.equal(a.domain_score, null);                                // HTTPS alone does not score the domain dimension
+  assert.equal(byId(a, 'https_transport').status, 'info');
 });
 
 test('pay-to-publish wording is a failed check with its evidence and drives High risk', () => {

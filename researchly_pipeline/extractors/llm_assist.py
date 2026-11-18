@@ -90,3 +90,56 @@ def gemini_llm(model: Optional[str] = None, api_key: Optional[str] = None, timeo
         return r.json()["candidates"][0]["content"]["parts"][0]["text"]
 
     return call
+
+
+# --- optional discovery: Gemini + Google Search grounding ---------------------------------------------------------
+# Results are ONLY candidate URLs. They are fetched by the normal Fetcher (robots.txt, rate limit) and any evidence
+# still needs a quote verified against the fetched page. Nothing the model writes here becomes data.
+
+DISCOVERY_PROMPT = """Find the official web pages for the academic conference "{name}" ({acronym} {year}), official
+site {site}: (1) its proceedings page, (2) its publisher's page for these proceedings, (3) its organiser's page about it.
+Return ONLY JSON: {{"urls": ["https://..."]}} with at most 3 URLs you found via search. Return [] if unsure."""
+
+_URL = re.compile(r"https?://[^\s\"'<>)\]]+")
+_REDIRECT_HOSTS = ("vertexaisearch.cloud.google.com", "google.com/url")
+
+
+def candidate_urls(response_json: dict) -> list[str]:
+    """URLs written in the answer text plus grounding-chunk URIs; Google redirect links are dropped."""
+    out: list[str] = []
+    try:
+        cand = response_json["candidates"][0]
+    except (KeyError, IndexError, TypeError):
+        return []
+    text = " ".join(p.get("text", "") for p in cand.get("content", {}).get("parts", []) if isinstance(p, dict))
+    data = parse_json(text)
+    urls = data.get("urls", []) if isinstance(data, dict) else _URL.findall(text)
+    for ch in (cand.get("groundingMetadata") or {}).get("groundingChunks", []) or []:
+        u = (ch.get("web") or {}).get("uri") if isinstance(ch, dict) else None
+        if u:
+            urls.append(u)
+    for u in urls:
+        if isinstance(u, str) and u.startswith(("http://", "https://")) and not any(h in u for h in _REDIRECT_HOSTS):
+            u = u.rstrip(".,;")
+            if u not in out:
+                out.append(u)
+    return out[:3]
+
+
+def gemini_search_discovery(model: Optional[str] = None, api_key: Optional[str] = None, timeout: float = 40.0):
+    """-> callable(conference) -> list[str], or None without a key. Opt-in via ENABLE_SEARCH_DISCOVERY=true."""
+    model = model or model_name()
+    key = api_key or os.getenv("GEMINI_API_KEY")
+    if not key:
+        return None
+
+    def discover(c) -> list[str]:
+        prompt = DISCOVERY_PROMPT.format(name=c.canonical_name, acronym=c.acronym or "", year=c.year, site=c.website_url)
+        body = {"contents": [{"parts": [{"text": prompt}]}], "tools": [{"google_search": {}}],
+                "generationConfig": {"temperature": 0}}
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+        r = httpx.post(url, params={"key": key}, json=body, timeout=timeout)
+        r.raise_for_status()
+        return candidate_urls(r.json())
+
+    return discover

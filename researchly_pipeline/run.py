@@ -21,6 +21,7 @@ from urllib.parse import urlparse
 import yaml
 
 import enrichment
+import lookups
 import scrapers
 from dedup.matcher import deduplicate
 from extractors import llm_assist
@@ -110,6 +111,9 @@ def run_pipeline(args: argparse.Namespace) -> dict:
             where = [{"loc": "/".join(map(str, e.get("loc", ()))), "type": e.get("type")} for e in getattr(exc, "errors", lambda: [])()][:5]
             log(logger, logging.WARNING, "existing record unreadable; dropped", error_type=type(exc).__name__, errors=where)
     merged = deduplicate(existing + new)
+    # Series matching: records of the same ccfddl series share one list of edition years (history evidence).
+    from scrapers.ccfddl import CCFDDLScraper
+    metrics.inc("ccfddl", "series_years_filled", CCFDDLScraper.fill_series_years(merged))
 
     # Grounded LLM enrichment (opt-in): fills EMPTY fields from each conference's own site, quote-verified.
     es = enrichment.settings_from_env()
@@ -126,9 +130,23 @@ def run_pipeline(args: argparse.Namespace) -> dict:
         enrich_report = enrichment.enrich_records(
             merged, fetcher=efetcher, store=store, llm=getattr(args, "llm_fn", None) or llm_assist.gemini_llm(),
             metrics=metrics, logger=logger, max_per_run=es["max_per_run"], recheck_days=es["recheck_days"],
-            reviewed=bool(ecfg.get("tos_reviewed") or args.allow_unreviewed or args.fixtures), only=only)
+            reviewed=bool(ecfg.get("tos_reviewed") or args.allow_unreviewed or args.fixtures), only=only,
+            discover=llm_assist.gemini_search_discovery() if es["search_discovery"] and not args.fixtures else None)
         if not any(s["status"] not in ("skipped_no_api_key",) for s in enrich_report.sites) and enrich_report.sites:
             log(logger, logging.WARNING, "enrichment skipped: GEMINI_API_KEY is not set (no sites fetched)")
+
+    # Live evidence lookups (DBLP SPARQL, RDAP, OpenAlex counts) for new/changed records; on by default once the
+    # `lookups` entry in sources.yaml is reviewed. Never in fixture (offline) mode.
+    ls = lookups.settings_from_env()
+    lcfg = {**cfg.get("defaults", {}), **cfg.get("lookups", {})}
+    if args.fixtures or ls["disabled"] or args.no_lookups:
+        lookup_report = {"skipped": "fixture mode" if args.fixtures else "disabled"}
+    elif not (lcfg.get("tos_reviewed") or args.allow_unreviewed):
+        lookup_report = {"skipped": "lookups tos_reviewed is false in sources.yaml"}
+        log(logger, logging.WARNING, "live lookups skipped", reason=lookup_report["skipped"])
+    else:
+        lookup_report = lookups.run_lookups(merged, fetcher=Fetcher(lcfg, logger), store=store, metrics=metrics,
+                                            logger=logger, max_per_run=ls["max_per_run"])
 
     validator, final, invalid = load_validator(), [], 0
     for c in merged:
@@ -145,6 +163,7 @@ def run_pipeline(args: argparse.Namespace) -> dict:
     summary = {"sources_run": [n for n in names if n not in skipped_sources], "sources_skipped": skipped_sources,
                "raw_records": len(raw), "new_normalized": len(new), "existing_records": len(existing),
                "output_records": len(final), "schema_invalid": invalid, "dry_run": args.dry_run, "metrics": metrics.snapshot()}
+    summary["lookups"] = lookup_report
     if enrich_report is not None:
         summary["enrichment"] = {"llm_calls": enrich_report.llm_calls, "hallucination_rejected": enrich_report.hallucination_rejected,
                                  "fields_applied": enrich_report.fields_applied, "conflicts": enrich_report.conflicts,
@@ -169,6 +188,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--ccfddl-path", help="ccfddl: read this local checkout instead of cloning")
     p.add_argument("--enrich", action="store_true", help="run grounded LLM enrichment (same as ENABLE_LLM_ENRICHMENT=true)")
     p.add_argument("--enrich-limit", type=int, help="enrich at most N records from this run (demo / smoke test)")
+    p.add_argument("--no-lookups", action="store_true", help="skip live DBLP/RDAP/OpenAlex lookups this run")
     p.add_argument("--llm", action="store_true", help="enable grounded LLM-assisted extraction (needs GEMINI_API_KEY)")
     p.add_argument("--config", default=str(ROOT / "config" / "sources.yaml"))
     p.add_argument("--output", default=str(ROOT / "storage" / "output" / "conferences.json"))

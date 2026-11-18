@@ -153,6 +153,7 @@ def normalize(raw: RawRecord) -> tuple[Optional[Conference], Optional[str]]:
         indexing_claims=parse_claims(raw.indexing_text, raw.source), ranking_claims=rankings, fees=parse_fees(raw.fees_text), claim_snippets=list(dict.fromkeys(raw.claim_snippets))[:8],
         committee=[CommitteeMember(name=m["name"], affiliation=m.get("affiliation")) for m in raw.committee if m.get("name")],
         dblp_key=raw.dblp_key,
+        series_years=sorted(set(raw.series_years)),
         provenance=Provenance(primary_source=raw.source, source_urls=urls,
                               scraped_at=raw.scraped_at or datetime.now(timezone.utc).isoformat(timespec="seconds"),
                               extraction_method=raw.extraction_method, confidence=0.0, dataset_version=raw.dataset_version),

@@ -59,8 +59,8 @@ function ResearcherCard({ researcher, onAction, isRecommended = false }) {
 
   return (
     <>
-      <div className={`bg-white rounded-2xl border p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between ${
-        isRecommended ? 'border-indigo-200 bg-gradient-to-b from-indigo-50/30 to-white' : 'border-slate-200/90 hover:border-slate-300'
+      <div className={`bg-surface rounded-2xl border p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between ${
+        isRecommended ? 'border-accent-200 bg-accent-50/40' : 'border-slate-200/90 hover:border-slate-300'
       }`}>
         <div>
           {/* Top Recommendation Badge (if matched by topics) */}
@@ -198,7 +198,7 @@ function ResearcherCard({ researcher, onAction, isRecommended = false }) {
                 onClick={handleDisconnect}
                 disabled={loading}
                 className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition cursor-pointer"
-                title="Disconnect from colleague"
+                title="Disconnect from colleague" aria-label="Disconnect from colleague"
               >
                 <UserX className="w-3.5 h-3.5" />
               </button>
@@ -210,7 +210,7 @@ function ResearcherCard({ researcher, onAction, isRecommended = false }) {
       {/* Connect Message Modal */}
       {showMsgModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-sm p-6 space-y-4">
+          <div className="bg-surface rounded-3xl shadow-2xl border border-slate-200 w-full max-w-sm p-6 space-y-4">
             <div>
               <h3 className="font-bold text-base text-slate-900">Connect with {researcher.name}</h3>
               <p className="text-xs text-slate-500 mt-1">
@@ -321,7 +321,7 @@ export default function NetworkPage() {
   return (
     <div className="max-w-[1700px] w-full mx-auto px-6 lg:px-12 py-8 space-y-6">
       {/* Header Banner */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-surface rounded-2xl border border-slate-200/90 p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center">
@@ -359,7 +359,7 @@ export default function NetworkPage() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition relative cursor-pointer ${
-                  isActive ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                  isActive ? 'bg-surface text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -381,7 +381,7 @@ export default function NetworkPage() {
             placeholder="Search by name, university, keyword..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full sm:w-80 pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-xl focus:border-blue-500 focus:outline-none bg-white transition"
+            className="w-full sm:w-80 pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-xl focus:border-blue-500 focus:outline-none bg-surface transition"
           />
         </div>
       </div>
@@ -390,7 +390,7 @@ export default function NetworkPage() {
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
           {[1, 2, 3, 4].map(n => (
-            <div key={n} className="bg-white rounded-2xl border border-slate-200 p-5 h-64 animate-pulse" />
+            <div key={n} className="bg-surface rounded-2xl border border-slate-200 p-5 h-64 animate-pulse" />
           ))}
         </div>
       ) : (
@@ -442,7 +442,7 @@ export default function NetworkPage() {
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-16 bg-white rounded-2xl border border-slate-200 p-10 space-y-3">
+                  <div className="text-center py-16 bg-surface rounded-2xl border border-slate-200 p-10 space-y-3">
                     <div className="w-14 h-14 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
                       <Users className="w-8 h-8" />
                     </div>
@@ -470,7 +470,7 @@ export default function NetworkPage() {
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-16 bg-white rounded-2xl border border-slate-200 p-8 space-y-3">
+                <div className="text-center py-16 bg-surface rounded-2xl border border-slate-200 p-8 space-y-3">
                   <UserCheck className="w-12 h-12 text-slate-300 mx-auto" />
                   <p className="font-bold text-sm text-slate-800">No mutual connections yet</p>
                   <p className="text-xs text-slate-500 max-w-sm mx-auto">
@@ -504,7 +504,7 @@ export default function NetworkPage() {
                   {incomingRequests.map(r => (
                     <div
                       key={r.id || r.connection_id}
-                      className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-slate-300 transition"
+                      className="bg-surface rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-slate-300 transition"
                     >
                       <div className="flex items-start gap-3.5">
                         <img
@@ -549,7 +549,7 @@ export default function NetworkPage() {
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-16 bg-white rounded-2xl border border-slate-200 p-8 space-y-3">
+                <div className="text-center py-16 bg-surface rounded-2xl border border-slate-200 p-8 space-y-3">
                   <Inbox className="w-12 h-12 text-slate-300 mx-auto" />
                   <p className="font-bold text-sm text-slate-800">Your requests inbox is empty</p>
                   <p className="text-xs text-slate-500 max-w-sm mx-auto">

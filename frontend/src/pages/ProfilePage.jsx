@@ -142,9 +142,9 @@ export default function ProfilePage() {
       )}
 
       {/* Profile Header Card */}
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden mb-5 shadow-sm">
+      <div className="bg-surface rounded-2xl border border-slate-200 overflow-hidden mb-5 shadow-sm">
         {/* Cover */}
-        <div className="h-36 sm:h-44 bg-gradient-to-r from-blue-600 via-indigo-600 to-slate-900 relative">
+        <div className="bg-slate-200 h-36 sm:h-44 relative">
           <div
             className="absolute inset-0 opacity-20"
             style={{
@@ -232,7 +232,7 @@ export default function ProfilePage() {
                   <select
                     value={form.role}
                     onChange={e => handleChange('role', e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:border-blue-500 focus:outline-none bg-white"
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:border-blue-500 focus:outline-none bg-surface"
                   >
                     <option>PhD Student</option>
                     <option>Postdoctoral Researcher</option>
@@ -351,7 +351,7 @@ export default function ProfilePage() {
         {/* Left Column */}
         <div className="lg:col-span-2 space-y-5">
           {/* Bio */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+          <div className="bg-surface rounded-2xl border border-slate-200 p-5 shadow-sm">
             <h2 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
               <User className="w-4 h-4 text-blue-600" /> Academic Bio
             </h2>
@@ -373,7 +373,7 @@ export default function ProfilePage() {
           </div>
 
           {/* Research Interests */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+          <div className="bg-surface rounded-2xl border border-slate-200 p-5 shadow-sm">
             <h2 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
               <FlaskConical className="w-4 h-4 text-indigo-600" /> Research Topics & Focus
             </h2>
@@ -385,7 +385,7 @@ export default function ProfilePage() {
                 >
                   <Hash className="w-2.5 h-2.5" /> {interest}
                   {isEditing && (
-                    <button onClick={() => removeInterest(interest)} className="text-blue-400 hover:text-rose-500 ml-0.5">
+                    <button onClick={() => removeInterest(interest)} aria-label={`Remove ${interest}`} className="text-blue-400 hover:text-rose-500 ml-0.5">
                       <X className="w-3 h-3" />
                     </button>
                   )}
@@ -416,7 +416,7 @@ export default function ProfilePage() {
           </div>
 
           {/* Academic Links & Profiles */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+          <div className="bg-surface rounded-2xl border border-slate-200 p-5 shadow-sm">
             <h2 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
               <LinkIcon className="w-4 h-4 text-emerald-600" /> Verified Links & Profiles
             </h2>
@@ -552,7 +552,7 @@ export default function ProfilePage() {
         {/* Right Column */}
         <div className="space-y-5">
           {/* Academic Metrics */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+          <div className="bg-surface rounded-2xl border border-slate-200 p-5 shadow-sm">
             <h2 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
               <Award className="w-4 h-4 text-amber-500" /> Academic Metrics
             </h2>
@@ -620,7 +620,7 @@ export default function ProfilePage() {
           </div>
 
           {/* Preferences (Collaborations & Reviewing) */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+          <div className="bg-surface rounded-2xl border border-slate-200 p-5 shadow-sm">
             <h2 className="text-sm font-bold text-slate-900 mb-3">Academic Availability</h2>
             {isEditing ? (
               <div className="space-y-2.5">

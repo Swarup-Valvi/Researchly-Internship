@@ -153,12 +153,12 @@ export default function OnboardingModal({ isOpen, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-      <div className="bg-white rounded-3xl shadow-2xl border border-slate-200/90 w-full max-w-2xl overflow-hidden flex flex-col max-h-[92vh]">
+      <div className="bg-surface rounded-3xl shadow-2xl border border-slate-200/90 w-full max-w-2xl overflow-hidden flex flex-col max-h-[92vh]">
         {/* Modal Header */}
-        <div className="px-6 py-5 bg-gradient-to-r from-blue-700 via-indigo-700 to-slate-900 text-white relative">
+        <div className="bg-slate-900 px-6 py-5 text-white relative">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center backdrop-blur-xs">
+              <div className="w-10 h-10 rounded-xl bg-surface/10 flex items-center justify-center backdrop-blur-xs">
                 <GraduationCap className="w-6 h-6 text-white" />
               </div>
               <div>
@@ -172,10 +172,10 @@ export default function OnboardingModal({ isOpen, onClose }) {
             </div>
 
             {/* Step Progress Indicators */}
-            <div className="flex items-center gap-1.5 bg-white/10 px-3 py-1.5 rounded-full text-xs font-semibold">
-              <span className={`w-2 h-2 rounded-full ${step >= 1 ? 'bg-blue-300' : 'bg-white/30'}`} />
-              <span className={`w-2 h-2 rounded-full ${step >= 2 ? 'bg-blue-300' : 'bg-white/30'}`} />
-              <span className={`w-2 h-2 rounded-full ${step >= 3 ? 'bg-blue-300' : 'bg-white/30'}`} />
+            <div className="flex items-center gap-1.5 bg-surface/10 px-3 py-1.5 rounded-full text-xs font-semibold">
+              <span className={`w-2 h-2 rounded-full ${step >= 1 ? 'bg-blue-300' : 'bg-surface/30'}`} />
+              <span className={`w-2 h-2 rounded-full ${step >= 2 ? 'bg-blue-300' : 'bg-surface/30'}`} />
+              <span className={`w-2 h-2 rounded-full ${step >= 3 ? 'bg-blue-300' : 'bg-surface/30'}`} />
             </div>
           </div>
         </div>
@@ -219,7 +219,7 @@ export default function OnboardingModal({ isOpen, onClose }) {
                   <select
                     value={role}
                     onChange={(e) => setRole(e.target.value)}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:border-blue-500 focus:outline-none"
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-surface focus:border-blue-500 focus:outline-none"
                   >
                     <option>PhD Candidate</option>
                     <option>Postdoctoral Fellow</option>
@@ -264,7 +264,7 @@ export default function OnboardingModal({ isOpen, onClose }) {
                   <select
                     value={fieldOfStudy}
                     onChange={(e) => setFieldOfStudy(e.target.value)}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white"
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-surface"
                   >
                     <option>Computer Science & AI</option>
                     <option>Cybersecurity & Cryptography</option>
@@ -359,7 +359,7 @@ export default function OnboardingModal({ isOpen, onClose }) {
                         className={`text-left p-2 rounded-xl border text-xs font-medium transition cursor-pointer flex items-center justify-between ${
                           isSelected
                             ? 'bg-indigo-50 border-indigo-300 text-indigo-900 font-semibold'
-                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                            : 'bg-surface border-slate-200 text-slate-600 hover:bg-slate-50'
                         }`}
                       >
                         <span>{v}</span>
@@ -405,7 +405,7 @@ export default function OnboardingModal({ isOpen, onClose }) {
                     placeholder="e.g. 18"
                     value={hIndex}
                     onChange={(e) => setHIndex(e.target.value)}
-                    className="w-full px-2 py-1.5 text-xs font-mono font-bold rounded-lg border border-slate-200 bg-white"
+                    className="w-full px-2 py-1.5 text-xs font-mono font-bold rounded-lg border border-slate-200 bg-surface"
                   />
                 </div>
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80">
@@ -416,7 +416,7 @@ export default function OnboardingModal({ isOpen, onClose }) {
                     placeholder="e.g. 1400"
                     value={citationsCount}
                     onChange={(e) => setCitationsCount(e.target.value)}
-                    className="w-full px-2 py-1.5 text-xs font-mono font-bold rounded-lg border border-slate-200 bg-white"
+                    className="w-full px-2 py-1.5 text-xs font-mono font-bold rounded-lg border border-slate-200 bg-surface"
                   />
                 </div>
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80">
@@ -427,7 +427,7 @@ export default function OnboardingModal({ isOpen, onClose }) {
                     placeholder="e.g. 15"
                     value={publicationsCount}
                     onChange={(e) => setPublicationsCount(e.target.value)}
-                    className="w-full px-2 py-1.5 text-xs font-mono font-bold rounded-lg border border-slate-200 bg-white"
+                    className="w-full px-2 py-1.5 text-xs font-mono font-bold rounded-lg border border-slate-200 bg-surface"
                   />
                 </div>
               </div>
@@ -534,7 +534,7 @@ export default function OnboardingModal({ isOpen, onClose }) {
               type="button"
               onClick={handleComplete}
               disabled={loading}
-              className="flex items-center gap-1.5 px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white text-xs font-bold rounded-xl shadow-sm transition cursor-pointer disabled:opacity-50"
+              className="bg-accent hover:bg-accent-hover flex items-center gap-1.5 px-6 py-2.5 text-white text-xs font-bold rounded-xl shadow-sm transition cursor-pointer disabled:opacity-50"
             >
               <CheckCircle2 className="w-4 h-4" />
               <span>{loading ? 'Saving Profile...' : 'Complete Academic Setup'}</span>

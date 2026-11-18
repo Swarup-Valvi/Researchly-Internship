@@ -158,3 +158,46 @@ def test_ccfddl_records_get_venue_city_country(env):
     _, recs = scrape(env)
     c, _ = normalize(by(recs, "AAAI", 2026))
     assert (c.location.venue, c.location.city, c.location.country) == ("Singapore EXPO", None, None)
+
+
+def _dac(year, series_years=(), acronym="DAC"):
+    from models import RawRecord
+    c, err = normalize(RawRecord(source="ccfddl", source_url="https://github.com/ccfddl/ccf-deadlines/blob/main/conference/DS/dac.yml",
+                                 website_url=f"https://www.dac.com/{year}", name="Design Automation Conference", acronym=acronym,
+                                 year=year, series_years=list(series_years), extraction_method="structured"))
+    assert err is None
+    return c
+
+
+def test_dac_series_years_are_matched_across_records_written_by_an_older_parser():
+    # Reproduces DAC 2027 "series not in the dataset": output written before series_years existed has [] on every
+    # DAC record, and an unchanged dataset commit skipped the re-read, so nothing ever filled it.
+    old = [_dac(2025), _dac(2026), _dac(2027)]
+    assert all(c.series_years == [] for c in old)
+    assert CCFDDLScraper.fill_series_years(old) == 3
+    assert [c.series_years for c in old] == [[2025, 2026, 2027]] * 3
+    # a freshly read record carries the full dataset list (incl. years < min_year); the whole series gets the union
+    mixed = old + [_dac(2028, series_years=[2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026, 2027, 2028])]
+    CCFDDLScraper.fill_series_years(mixed)
+    assert all(c.series_years == list(range(2019, 2029)) for c in mixed)
+
+
+def test_series_matching_never_mixes_different_series_or_non_dataset_records():
+    a, other = _dac(2027), _dac(2027, acronym="DATE")                     # same file, different acronym
+    from models import RawRecord
+    site, _ = normalize(RawRecord(source="individual", source_url="https://www.dac.com/2027", acronym="DAC", year=2027,
+                                  name="Design Automation Conference"))
+    CCFDDLScraper.fill_series_years([a, other, site])
+    assert a.series_years == [2027] and other.series_years == [2027] and site.series_years == []
+
+
+def test_unchanged_dataset_is_reread_once_after_a_parser_upgrade(env):
+    s1, first = scrape(env)
+    st = env["store"].state["ccfddl"]
+    assert first and st["parser_version"] == 2
+    st.pop("parser_version")                                              # state written by the old parser
+    s2, again = scrape(env)
+    assert len(again) == len(first)                                       # same SHA, but re-read for the new fields
+    assert all(r.series_years for r in again)
+    _, third = scrape(env)
+    assert third == []                                                    # then unchanged-SHA skipping resumes

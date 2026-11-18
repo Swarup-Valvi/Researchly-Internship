@@ -4,6 +4,13 @@
   "type": "array",
   "items": {"$ref": "#/$defs/conference"},
   "$defs": {
+    "lookup": {
+      "anyOf": [{"type": "null"}, {
+        "type": "object", "additionalProperties": false, "required": ["ok", "checked_at"],
+        "properties": {"ok": {"type": "boolean"}, "error": {"$ref": "#/$defs/stringOrNull"}, "data": {"type": "object"},
+                       "evidence_url": {"$ref": "#/$defs/stringOrNull"}, "checked_at": {"type": "string"}}
+      }]
+    },
     "isoDateOrNull": {
       "anyOf": [
         {"type": "null"},
@@ -125,6 +132,21 @@
         "dblp_key": {"anyOf": [{"type": "null"}, {"type": "string", "pattern": "^[A-Za-z0-9_-]{1,40}$"}]},
         "proceedings_series": {"$ref": "#/$defs/stringOrNull"},
         "contact_email_domain": {"anyOf": [{"type": "null"}, {"type": "string", "pattern": "^[a-z0-9.-]+\\.[a-z]{2,}$"}]},
+        "organizer": {"$ref": "#/$defs/stringOrNull"},
+        "peer_review_statement": {"anyOf": [{"type": "null"}, {"type": "string", "maxLength": 400}]},
+        "risk_phrases": {"type": "array", "maxItems": 20, "items": {
+          "type": "object", "additionalProperties": false, "required": ["category", "quote", "source_url", "method", "found_at"],
+          "properties": {"category": {"enum": ["guaranteed_acceptance", "publish_in_days", "fast_review", "fee_only", "no_named_committee"]},
+                         "quote": {"type": "string", "maxLength": 400, "not": {"pattern": "[A-Za-z0-9._%+-]+@"}},
+                         "source_url": {"type": "string"}, "method": {"enum": ["pattern", "llm_grounded"]},
+                         "found_at": {"type": "string"}}
+        }},
+        "series_years": {"type": "array", "items": {"type": "integer", "minimum": 1950, "maximum": 2100}},
+        "lookups": {"anyOf": [{"type": "null"}, {
+          "type": "object", "additionalProperties": false,
+          "properties": {"dblp": {"$ref": "#/$defs/lookup"}, "rdap": {"$ref": "#/$defs/lookup"},
+                         "committee": {"$ref": "#/$defs/lookup"}, "input_hash": {"$ref": "#/$defs/stringOrNull"}}
+        }]},
         "enrichment": {
           "anyOf": [{"type": "null"}, {
             "type": "object", "additionalProperties": false,
@@ -136,6 +158,12 @@
               "content_hash": {"$ref": "#/$defs/stringOrNull"},
               "model": {"$ref": "#/$defs/stringOrNull"},
               "hallucination_rejected": {"type": "integer", "minimum": 0},
+              "pages_read": {"type": "array", "items": {"type": "string"}},
+              "rejected": {"type": "array", "maxItems": 50, "items": {
+                "type": "object", "additionalProperties": false, "required": ["field", "reason"],
+                "properties": {"field": {"type": "string"}, "reason": {"type": "string"},
+                               "quote": {"anyOf": [{"type": "null"}, {"type": "string", "maxLength": 400, "not": {"pattern": "[A-Za-z0-9._%+-]+@"}}]}}
+              }},
               "fields": {"type": "array", "items": {
                 "type": "object", "additionalProperties": false,
                 "required": ["field", "value", "quote", "source_url", "extraction_method", "model", "extracted_at"],
