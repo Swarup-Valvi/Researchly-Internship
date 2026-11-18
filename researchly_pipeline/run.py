@@ -20,6 +20,7 @@ from urllib.parse import urlparse
 
 import yaml
 
+import enrichment
 import scrapers
 from dedup.matcher import deduplicate
 from extractors import llm_assist
@@ -110,6 +111,25 @@ def run_pipeline(args: argparse.Namespace) -> dict:
             log(logger, logging.WARNING, "existing record unreadable; dropped", error_type=type(exc).__name__, errors=where)
     merged = deduplicate(existing + new)
 
+    # Grounded LLM enrichment (opt-in): fills EMPTY fields from each conference's own site, quote-verified.
+    es = enrichment.settings_from_env()
+    enrich_report = None
+    if es["enabled"] or args.enrich:
+        ecfg = {**cfg.get("defaults", {}), **cfg.get("enrichment", {})}
+        efetcher = FixtureFetcher(args.fixtures, logger) if args.fixtures else Fetcher(ecfg, logger)
+        new_ids = {c.conference_id for c in new}
+        only = None
+        if args.enrich_limit:   # restrict to the first N records from THIS run that have an official site
+            cand = [c for c in merged if c.conference_id in new_ids and enrichment._site_url(c)] or \
+                   [c for c in merged if enrichment._site_url(c)]
+            only = {c.conference_id for c in cand[: args.enrich_limit]}
+        enrich_report = enrichment.enrich_records(
+            merged, fetcher=efetcher, store=store, llm=getattr(args, "llm_fn", None) or llm_assist.gemini_llm(),
+            metrics=metrics, logger=logger, max_per_run=es["max_per_run"], recheck_days=es["recheck_days"],
+            reviewed=bool(ecfg.get("tos_reviewed") or args.allow_unreviewed or args.fixtures), only=only)
+        if not any(s["status"] not in ("skipped_no_api_key",) for s in enrich_report.sites) and enrich_report.sites:
+            log(logger, logging.WARNING, "enrichment skipped: GEMINI_API_KEY is not set (no sites fetched)")
+
     validator, final, invalid = load_validator(), [], 0
     for c in merged:
         rec = c.model_dump()
@@ -125,6 +145,10 @@ def run_pipeline(args: argparse.Namespace) -> dict:
     summary = {"sources_run": [n for n in names if n not in skipped_sources], "sources_skipped": skipped_sources,
                "raw_records": len(raw), "new_normalized": len(new), "existing_records": len(existing),
                "output_records": len(final), "schema_invalid": invalid, "dry_run": args.dry_run, "metrics": metrics.snapshot()}
+    if enrich_report is not None:
+        summary["enrichment"] = {"llm_calls": enrich_report.llm_calls, "hallucination_rejected": enrich_report.hallucination_rejected,
+                                 "fields_applied": enrich_report.fields_applied, "conflicts": enrich_report.conflicts,
+                                 "sites": enrich_report.sites}
     if not args.dry_run:
         (out_path.parent / "metrics.json").write_text(json.dumps(summary, indent=2))
     log(logger, logging.INFO, "run complete", **{k: v for k, v in summary.items() if k != "metrics"})
@@ -143,6 +167,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--details", action="store_true", help="wikicfp: fetch each event page for external link + categories")
     p.add_argument("--urls", nargs="*", help="extra seed URLs for the 'individual' source")
     p.add_argument("--ccfddl-path", help="ccfddl: read this local checkout instead of cloning")
+    p.add_argument("--enrich", action="store_true", help="run grounded LLM enrichment (same as ENABLE_LLM_ENRICHMENT=true)")
+    p.add_argument("--enrich-limit", type=int, help="enrich at most N records from this run (demo / smoke test)")
     p.add_argument("--llm", action="store_true", help="enable grounded LLM-assisted extraction (needs GEMINI_API_KEY)")
     p.add_argument("--config", default=str(ROOT / "config" / "sources.yaml"))
     p.add_argument("--output", default=str(ROOT / "storage" / "output" / "conferences.json"))

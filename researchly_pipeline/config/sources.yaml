@@ -99,3 +99,10 @@ sources:
     repo_url: "https://github.com/ccfddl/ccf-deadlines.git"
     seed_urls: []
 
+# Grounded LLM enrichment reads each conference's OWN website (third-party sites). Same guard as sources:
+# live fetching is refused until you review and set tos_reviewed: true (or pass --allow-unreviewed for a one-off).
+# Opt-in at runtime with ENABLE_LLM_ENRICHMENT=true; budget MAX_ENRICH_PER_RUN (default 50).
+enrichment:
+  tos_reviewed: false
+  requests_per_minute: 6
+  access: "conference websites linked from ccfddl/other sources; robots.txt honoured; quote-verified extraction only"

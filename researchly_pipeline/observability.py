@@ -39,7 +39,8 @@ class Metrics:
         self.data: dict[str, dict] = defaultdict(lambda: {**{c: 0 for c in self.COUNTERS}, "latency_ms_total": 0.0})
 
     def inc(self, source: str, key: str, n: int = 1) -> None:
-        self.data[source][key] += n
+        d = self.data[source]
+        d[key] = d.get(key, 0) + n   # extra counters (e.g. hallucination_rejected, llm_calls) start at 0
 
     def add_latency(self, source: str, ms: float) -> None:
         self.data[source]["latency_ms_total"] += ms
