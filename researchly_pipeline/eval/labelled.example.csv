@@ -1,0 +1,3 @@
+conference,url,label,label_source,notes
+PLACEHOLDER - replace me,https://example.org/legit-conference/,PLACEHOLDER,PLACEHOLDER,"Replace with a real conference. label must be legit or risky. label_source = where the label comes from (e.g. CORE ranking page URL, a published predatory-venue report, your own committee review)."
+PLACEHOLDER - replace me,https://example.org/risky-conference/,PLACEHOLDER,PLACEHOLDER,"Rows whose label is PLACEHOLDER are skipped by score.py. Delete these rows once you add real ones."

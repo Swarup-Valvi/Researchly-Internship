@@ -16,3 +16,5 @@ researchly_pipeline/storage/failed/*
 researchly_pipeline/storage/state.json
 researchly_pipeline/storage/output/conferences.json
 researchly_pipeline/storage/output/metrics.json
+# Eval labels may name real organisers: keep them local (commit only the .example template)
+researchly_pipeline/eval/labelled.csv
