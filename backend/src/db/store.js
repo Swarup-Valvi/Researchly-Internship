@@ -1,9 +1,10 @@
 import crypto from 'crypto';
 import { getSupabase, isSupabaseReady } from './supabase.js';
 import { REAL_ACADEMIC_EVENTS } from './realEvents.js';
+import { evaluateConferenceCredibility } from '../services/credibilityEngine.js';
+import { config } from '../config/env.js';
 import {
   initialConferences,
-  initialCredibilityAudits,
   initialDeadlineHistory,
   initialPosts,
   initialComments,
@@ -13,18 +14,32 @@ import {
 } from './seedData.js';
 
 // Pre-load all verified real academic conferences, workshops, and webinars
-const normalizedRealEvents = REAL_ACADEMIC_EVENTS.map(e => {
+// Curated seed (hand-entered, unverified). Hard-coded scores are discarded; the engine decides.
+const normalizedRealEvents = (config.enableCuratedSeed ? REAL_ACADEMIC_EVENTS : []).map(e => {
   const slug = `${e.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${e.edition}`;
+  // eslint-disable-next-line no-unused-vars
+  const { credibility_score, risk_level, ...rest } = e;
   return {
-    ...e,
+    ...rest,
     id: e.id || slug,
-    slug
+    slug,
+    data_origin: 'curated_seed',
+    needs_verification: true,
+    credibility_score: null,
+    risk_level: 'Not assessed'
   };
 });
 
 // Autonomous in-memory database state
 let conferences = [...normalizedRealEvents];
-let credibilityAudits = JSON.parse(JSON.stringify(initialCredibilityAudits));
+// Audits are computed from evidence at startup (the old hand-written audits were removed).
+let credibilityAudits = {};
+for (const c of conferences) {
+  const audit = evaluateConferenceCredibility(c);
+  credibilityAudits[c.id] = audit;
+  c.credibility_score = audit.overall_score;
+  c.risk_level = audit.risk_level;
+}
 let deadlineHistory = JSON.parse(JSON.stringify(initialDeadlineHistory));
 let posts = JSON.parse(JSON.stringify(initialPosts));
 let comments = JSON.parse(JSON.stringify(initialComments));
@@ -133,8 +148,8 @@ export const store = {
       id: confData.id || slug,
       slug,
       topics: Array.isArray(confData.topics) ? confData.topics : [],
-      credibility_score: confData.credibility_score || 85,
-      risk_level: confData.risk_level || 'Low',
+      credibility_score: confData.credibility_score ?? null,
+      risk_level: confData.risk_level || 'Not assessed',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };

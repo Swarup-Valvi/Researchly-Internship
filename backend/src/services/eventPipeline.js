@@ -1,94 +1,33 @@
 /**
- * Production-Ready Real Academic Event Pipeline for Researchly.io
- * 
- * Ingests, normalizes, audits, and tracks real academic conferences,
- * research paper calls (CFPs), workshops, and prestigious academic webinars.
+ * Seed-and-audit pass. Conference records come from (a) the developer-curated seed list
+ * (tagged `curated_seed`, unverified) and (b) the scraping pipeline via ingestService.
+ * Audits are computed from evidence only; this module never creates or "discovers" conferences.
  */
-
 import { store } from '../db/store.js';
 import { evaluateConferenceCredibility } from './credibilityEngine.js';
+import { gatherLookups } from './lookups.js';
+import { config } from '../config/env.js';
 import { REAL_ACADEMIC_EVENTS } from '../db/realEvents.js';
+import { syncFromPipeline } from './ingestService.js';
 
 export { REAL_ACADEMIC_EVENTS };
 
-/**
- * Execute real event synchronization pipeline
- */
-export async function runEventPipeline() {
-  console.log('[EventPipeline] Running real academic event ingestion & credibility audit pipeline...');
-  let discoveredCount = 0;
-  let updatedCount = 0;
-  let extensionsCount = 0;
-
-  for (const event of REAL_ACADEMIC_EVENTS) {
-    const slug = `${event.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${event.edition}`;
-    const existing = await store.getConferenceById(slug);
-
-    if (existing) {
-      // Check for deadline drift
-      if (
-        event.submission_deadline &&
-        existing.submission_deadline &&
-        event.submission_deadline !== existing.submission_deadline
-      ) {
-        console.log(`[EventPipeline] Deadline drift detected for ${event.name} ${event.edition}: ${existing.submission_deadline} -> ${event.submission_deadline}`);
-        await store.recordDeadlineChange({
-          conference_id: slug,
-          previous_deadline: existing.submission_deadline,
-          new_deadline: event.submission_deadline,
-          raw_previous_deadline: existing.raw_deadline,
-          raw_new_deadline: event.raw_deadline,
-          change_reason: event.extension_reason || 'Official extension or calendar adjustment announced.'
-        });
-        extensionsCount++;
-      }
-
-      const updated = await store.saveConference({
-        ...existing,
-        ...event,
-        id: slug,
-        slug,
-        is_extended: existing.is_extended || !!event.is_extended
-      });
-
-      // Run 9-dimension credibility evaluation
-      const audit = evaluateConferenceCredibility(updated);
-      await store.saveCredibilityAudit(audit);
-      updatedCount++;
-    } else {
-      // New event
-      const newEvent = await store.saveConference({
-        ...event,
-        id: slug,
-        slug
-      });
-
-      // Run 9-dimension credibility evaluation
-      const audit = evaluateConferenceCredibility(newEvent);
-      await store.saveCredibilityAudit(audit);
-
-      if (event.is_extended) {
-        await store.recordDeadlineChange({
-          conference_id: slug,
-          previous_deadline: event.submission_deadline,
-          new_deadline: event.submission_deadline,
-          change_reason: event.extension_reason || 'Initial extended deadline verified.'
-        });
-        extensionsCount++;
-      }
-
-      discoveredCount++;
-    }
+/** Re-audit every stored conference (adds live DBLP/RDAP evidence when ENABLE_LIVE_CHECKS=true). */
+export async function reauditAll() {
+  const all = await store.getConferences({});
+  let audited = 0;
+  for (const c of all) {
+    const lookups = config.enableLiveChecks ? await gatherLookups(c) : {};
+    const a = evaluateConferenceCredibility(c, lookups);
+    await store.saveCredibilityAudit(a);
+    await store.saveConference({ ...c, credibility_score: a.overall_score, risk_level: a.risk_level });
+    audited++;
   }
+  return audited;
+}
 
-  const result = {
-    timestamp: new Date().toISOString(),
-    discovered_count: discoveredCount,
-    updated_count: updatedCount,
-    extensions_detected: extensionsCount,
-    total_active_events: REAL_ACADEMIC_EVENTS.length
-  };
-
-  console.log(`[EventPipeline] Pipeline complete: ${discoveredCount} new, ${updatedCount} updated, ${extensionsCount} extensions logged. Total active events: ${REAL_ACADEMIC_EVENTS.length}`);
-  return result;
+export async function runEventPipeline() {
+  const ingest = await syncFromPipeline();
+  const audited = await reauditAll();
+  return { timestamp: new Date().toISOString(), ingest, audited_count: audited };
 }

@@ -4,3 +4,15 @@ dist/
 .DS_Store
 *.log
 
+
+# Python / pipeline
+__pycache__/
+.venv/
+.pytest_cache/
+researchly_pipeline/storage/raw/*
+!researchly_pipeline/storage/raw/.gitkeep
+researchly_pipeline/storage/failed/*
+!researchly_pipeline/storage/failed/.gitkeep
+researchly_pipeline/storage/state.json
+researchly_pipeline/storage/output/conferences.json
+researchly_pipeline/storage/output/metrics.json

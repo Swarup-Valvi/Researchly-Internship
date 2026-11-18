@@ -260,7 +260,7 @@ export default function AiMatcherPage() {
                               {item.ranking}
                             </span>
                             <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                              Audit: {item.credibility_score}/100
+                              Audit: {typeof item.credibility_score === 'number' ? `${item.credibility_score}/100` : 'not assessed'}
                             </span>
                           </div>
                           <p className="text-xs text-slate-500 mt-1">{item.title}</p>

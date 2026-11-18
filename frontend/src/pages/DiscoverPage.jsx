@@ -242,9 +242,10 @@ export default function DiscoverPage() {
                 className="w-full py-2.5 px-3 text-sm rounded-xl border border-slate-200 bg-white focus:border-blue-500 focus:outline-none"
               >
                 <option value="All">All Credibility Tiers</option>
-                <option value="Low">Low Risk (Verified Top Tier)</option>
-                <option value="Medium">Medium Risk (Review Carefully)</option>
-                <option value="High">High Risk (Predatory Alerts)</option>
+                <option value="Low">Low risk indicators</option>
+                <option value="Medium">Medium risk (review carefully)</option>
+                <option value="High">High-risk indicators</option>
+                <option value="Insufficient evidence">Not enough evidence</option>
               </select>
             </div>
 

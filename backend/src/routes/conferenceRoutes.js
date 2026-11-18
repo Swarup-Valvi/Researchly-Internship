@@ -1,6 +1,9 @@
 import express from 'express';
 import { store } from '../db/store.js';
+import crypto from 'node:crypto';
 import { syncEventsNow, getSchedulerStatus } from '../services/scheduler.js';
+import { ingestRecords } from '../services/ingestService.js';
+import { config } from '../config/env.js';
 
 const router = express.Router();
 
@@ -27,13 +30,31 @@ router.get('/sync/status', (req, res) => {
   });
 });
 
-// POST manually trigger 12-hour LLM discovery pipeline
+// POST pipeline output (used by the scheduled GitHub Action). Protected by INGEST_TOKEN.
+router.post('/ingest', async (req, res) => {
+  if (!config.ingestToken) {
+    return res.status(503).json({ success: false, error: 'Ingest endpoint disabled: INGEST_TOKEN is not configured' });
+  }
+  const given = Buffer.from(String(req.get('x-ingest-token') || ''));
+  const want = Buffer.from(config.ingestToken);
+  if (given.length !== want.length || !crypto.timingSafeEqual(given, want)) {
+    return res.status(401).json({ success: false, error: 'Invalid ingest token' });
+  }
+  try {
+    const result = await ingestRecords(req.body);
+    res.json({ success: true, data: result });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// POST manually trigger pipeline import + re-audit
 router.post('/sync', async (req, res) => {
   try {
     const result = await syncEventsNow();
     res.json({
       success: true,
-      message: 'LLM conference discovery & credibility pipeline completed successfully.',
+      message: 'Pipeline import and credibility re-audit completed.',
       data: result
     });
   } catch (err) {

@@ -1,6 +1,9 @@
 /**
- * Authentic, verified 2026-2027 academic conferences, research workshops,
- * and academic webinar series with real official links, dates, and deadlines.
+ * Developer-curated SEED list of 2026-2027 conferences. NOT machine-verified.
+ * Dates, deadlines and links were entered by hand and must be re-checked against each official site;
+ * the pipeline (researchly_pipeline/) is the intended source of truth. These records are tagged
+ * data_origin: 'curated_seed' and any hard-coded credibility_score / risk_level is ignored (scores come
+ * only from the evidence-based engine).
  */
 
 export const REAL_ACADEMIC_EVENTS = [

@@ -97,94 +97,9 @@ export async function callLLM({ prompt, systemPrompt = '', temperature = 0.3 }) 
   return null;
 }
 
-/**
- * Discover new tech conferences & CFP opportunities
- */
-export async function discoverNewEvents() {
-  const prompt = `
-Generate a list of 4 upcoming, realistic top/tier tech conferences and Call for Papers (CFPs) in AI, Computer Vision, Systems, and Cybersecurity for 2026/2027.
-Include 1 conference that has an extended deadline to simulate deadline change tracking.
-Return strictly a JSON array with objects matching this exact structure:
-[
-  {
-    "name": "Conference Short Name (e.g. AAAI)",
-    "edition": "2027",
-    "title": "Full Official Title",
-    "field": "Field of Study (e.g. Artificial Intelligence, Systems, Security)",
-    "submission_deadline": "YYYY-MM-DD",
-    "raw_deadline": "Human readable deadline string",
-    "start_date": "YYYY-MM-DD",
-    "end_date": "YYYY-MM-DD",
-    "location": "City, Country",
-    "format": "In-Person | Hybrid | Virtual",
-    "publisher": "Official Publisher",
-    "organizer": "Official Organizing Society",
-    "fees": "Registration fee description",
-    "ranking": "Core A* | Core A | Core B",
-    "official_url": "https://...",
-    "submission_url": "https://...",
-    "topics": ["topic1", "topic2", "topic3"],
-    "is_extended": false,
-    "extension_reason": "Optional reason if extended"
-  }
-]
-`;
+// discoverNewEvents() was removed: it asked the LLM to *generate* conferences, which are fabricated records.
+// Conference data now comes only from the scraping pipeline (see services/ingestService.js).
 
-  const parsed = await callLLM({
-    prompt,
-    systemPrompt: 'You are an academic event crawler and normalizer. Return only valid JSON array.'
-  });
-
-  if (Array.isArray(parsed) && parsed.length > 0) {
-    return parsed;
-  }
-
-  // Fallback realistic curated events if API keys are not supplied
-  const year = 2026;
-  return [
-    {
-      name: "EMNLP",
-      edition: `${year}`,
-      title: "Conference on Empirical Methods in Natural Language Processing",
-      field: "Natural Language Processing",
-      submission_deadline: `${year}-06-15`,
-      raw_deadline: `June 15, ${year} (AoE)`,
-      start_date: `${year}-11-04`,
-      end_date: `${year}-11-08`,
-      location: "Miami, Florida, USA",
-      format: "Hybrid",
-      publisher: "ACL Anthology",
-      organizer: "SIGDAT (ACL)",
-      fees: "$750 Academic / $320 Student",
-      ranking: "Core A*",
-      official_url: "https://2026.emnlp.org",
-      submission_url: "https://openreview.net/group?id=aclweb.org/EMNLP/2026/Conference",
-      topics: ["Natural Language Processing", "Large Language Models", "Reasoning", "Multilingual NLP"],
-      is_extended: false
-    },
-    {
-      name: "OSDI",
-      edition: `${year}`,
-      title: "USENIX Symposium on Operating Systems Design and Implementation",
-      field: "Systems & Cloud Computing",
-      submission_deadline: `${year}-07-08`,
-      raw_deadline: `July 08, ${year} 23:59 EDT`,
-      start_date: `${year}-10-18`,
-      end_date: `${year}-10-21`,
-      location: "Boston, MA, USA",
-      format: "In-Person",
-      publisher: "USENIX Association",
-      organizer: "USENIX",
-      fees: "$880 Standard / $380 Student",
-      ranking: "Core A*",
-      official_url: "https://www.usenix.org/conference/osdi26",
-      submission_url: "https://osdi26.hotcrp.com",
-      topics: ["Operating Systems", "Distributed Systems", "Cloud Infrastructure", "Kernel Virtualization"],
-      is_extended: true,
-      extension_reason: "USENIX program committee announced a 4-day submission extension."
-    }
-  ];
-}
 
 /**
  * AI Assist for drafting and polishing academic social posts

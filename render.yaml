@@ -17,6 +17,12 @@ services:
         sync: false
       - key: GEMINI_API_KEY
         sync: false
+      - key: INGEST_TOKEN          # shared secret for POST /api/conferences/ingest (GitHub Action)
+        generateValue: true
+      - key: ENABLE_LIVE_CHECKS    # true = DBLP + RDAP lookups during audits
+        value: "false"
+      - key: ENABLE_CURATED_SEED   # false hides the unverified hand-entered seed list
+        value: "true"
 
   - type: web
     name: researchly-site

@@ -270,7 +270,7 @@ export default function HomePage() {
               </div>
               <h3 className="text-lg font-bold text-slate-900">9-Dimension Credibility Audits</h3>
               <p className="text-sm text-slate-600 leading-relaxed">
-                Automated audits check DBLP indexation, CORE rankings, publisher legitimacy, and domain longevity to expose predatory clones before you submit.
+                Evidence-based audits surface risk indicators (sponsorship claims, domain age, DBLP presence, pay-to-publish wording) with their sources, and clearly mark what could not be checked.
               </p>
               <Link to="/discover?risk=High" className="inline-flex items-center gap-1 text-sm font-semibold text-blue-600 hover:text-blue-800">
                 <span>View Predatory Warnings</span>
@@ -365,7 +365,7 @@ export default function HomePage() {
                     <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
                       <span className="text-slate-600 font-medium">Due: {conf.raw_deadline || conf.submission_deadline}</span>
                       <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                        {conf.credibility_score}/100 {conf.ranking}
+                        {typeof conf.credibility_score === 'number' ? `${conf.credibility_score}/100` : 'Not assessed'} {conf.ranking}
                       </span>
                     </div>
                   </div>
@@ -842,7 +842,7 @@ export default function HomePage() {
                     <div className="flex items-center justify-between pt-1.5 border-t border-slate-100/60 text-xs">
                       <span className="text-slate-400">{conf.raw_deadline || conf.submission_deadline}</span>
                       <span className="font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">
-                        {conf.credibility_score}/100 Core
+                        {typeof conf.credibility_score === 'number' ? `${conf.credibility_score}/100` : 'Not assessed'}
                       </span>
                     </div>
                   </div>

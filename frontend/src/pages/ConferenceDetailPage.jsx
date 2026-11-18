@@ -19,6 +19,7 @@ import {
   DollarSign,
   History
 } from 'lucide-react';
+import { riskDisplay, scoreText } from '../lib/risk';
 
 export default function ConferenceDetailPage() {
   const { id } = useParams();
@@ -64,17 +65,31 @@ export default function ConferenceDetailPage() {
   const audit = conference.credibility_audit || {};
   const deadlineHistory = conference.deadline_history || [];
 
+  const risk = riskDisplay(conference.risk_level, conference.credibility_score);
   const getScoreColor = (score) => {
+    if (typeof score !== 'number') return 'text-slate-500';
     if (score >= 80) return 'text-emerald-600';
     if (score >= 50) return 'text-amber-600';
     return 'text-rose-600';
   };
 
   const getScoreBg = (score) => {
+    if (typeof score !== 'number') return 'bg-slate-50 border-slate-200';
     if (score >= 80) return 'bg-emerald-50 border-emerald-200';
     if (score >= 50) return 'bg-amber-50 border-amber-200';
     return 'bg-rose-50 border-rose-200';
   };
+
+  const statusStyle = {
+    pass: 'bg-emerald-100 text-emerald-800',
+    warn: 'bg-amber-100 text-amber-800',
+    fail: 'bg-rose-100 text-rose-800',
+    not_checked: 'bg-slate-100 text-slate-600'
+  };
+  const statusLabel = { pass: 'Pass', warn: 'Warning', fail: 'Fail', not_checked: 'Not checked' };
+  const originLabel = conference.data_origin === 'pipeline'
+    ? `Scraped from ${conference.source_primary} (pipeline confidence ${conference.pipeline_confidence})`
+    : 'Developer-curated seed entry \u2014 not machine-verified; confirm dates and links on the official site';
 
   return (
     <div className="max-w-[1500px] w-full mx-auto px-6 lg:px-12 py-8 space-y-6">
@@ -130,14 +145,20 @@ export default function ConferenceDetailPage() {
           {/* Credibility Score Box */}
           <div className={`p-4 rounded-xl border flex flex-col items-center justify-center text-center min-w-[170px] ${getScoreBg(conference.credibility_score)}`}>
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
-              Credibility Score
+              Evidence Score
             </span>
             <div className={`text-4xl font-black my-1 font-mono ${getScoreColor(conference.credibility_score)}`}>
-              {conference.credibility_score}<span className="text-sm font-normal text-slate-500">/100</span>
+              {typeof conference.credibility_score === 'number' ? conference.credibility_score : '\u2014'}
+              {typeof conference.credibility_score === 'number' && <span className="text-sm font-normal text-slate-500">/100</span>}
             </div>
             <span className={`text-xs font-bold uppercase tracking-wide ${getScoreColor(conference.credibility_score)}`}>
-              {conference.risk_level} Risk Tier
+              {risk.label}
             </span>
+            {typeof audit.coverage === 'number' && (
+              <span className="mt-1 text-[10px] text-slate-500">
+                Based on {Math.round(audit.coverage * 100)}% of the audit weight
+              </span>
+            )}
           </div>
         </div>
 
@@ -175,43 +196,79 @@ export default function ConferenceDetailPage() {
         </div>
       </div>
 
-      {/* 9-Dimension Risk Audit Breakdown */}
+      {/* Origin of this record */}
+      <div className="text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2">
+        <strong className="text-slate-700">Data origin:</strong> {originLabel}
+        {conference.source_urls?.length > 0 && (
+          <span> \u2022 Sources: {conference.source_urls.map((u, i) => (
+            <a key={i} href={u} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline mr-2">{new URL(u).hostname}</a>
+          ))}</span>
+        )}
+      </div>
+
+      {/* Risk Audit: dimensions + the evidence behind each check */}
       <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
         <div>
           <h2 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
             <ShieldCheck className="w-5 h-5 text-blue-600" />
-            <span>Automated 9-Dimension Risk Audit</span>
+            <span>Risk Indicator Audit</span>
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Cross-verified against DBLP, CrossRef, official society charters, and convention registries.
+            Only checks that could actually be performed are scored. Everything else is shown as &quot;Not checked&quot;
+            \u2014 these are risk indicators, not a verdict, and absence from a database is not proof a venue is illegitimate.
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
           {[
-            { label: 'Domain & Infrastructure', score: audit.domain_score || 95, desc: 'TLS validation, age & WHOIS' },
-            { label: 'Organizer Authenticity', score: audit.organizer_score || 95, desc: 'Chartered society verification' },
-            { label: 'Publisher Reputation', score: audit.publisher_score || 95, desc: 'Recognized academic press' },
-            { label: 'Indexing Validation', score: audit.indexing_score || 95, desc: 'DBLP, Scopus & CrossRef records' },
-            { label: 'TPC Credentials', score: audit.tpc_score || 90, desc: 'Faculty chairs & double-blind' },
-            { label: 'Past History & Longevity', score: audit.history_score || 95, desc: 'Edition track record' },
-            { label: 'Physical Venue Check', score: audit.venue_score || 90, desc: 'Verified convention facility' },
-            { label: 'Fee Transparency', score: audit.fee_score || 85, desc: 'Clear tiering, no pay-to-publish' },
-            { label: 'Editorial Authenticity', score: audit.editorial_score || 90, desc: 'Institutional contact channels' },
+            { label: 'Domain & Infrastructure', score: audit.domain_score },
+            { label: 'Organizer & Sponsorship', score: audit.organizer_score },
+            { label: 'Publisher Reputation', score: audit.publisher_score },
+            { label: 'Indexing Validation', score: audit.indexing_score },
+            { label: 'Program Committee', score: audit.tpc_score },
+            { label: 'Past History & Longevity', score: audit.history_score },
+            { label: 'Physical Venue', score: audit.venue_score },
+            { label: 'Fee Transparency', score: audit.fee_score },
+            { label: 'Submission Channel', score: audit.editorial_score },
           ].map((dim, i) => (
             <div key={i} className="p-3 rounded-xl border border-slate-100 bg-slate-50/50 flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-slate-800">{dim.label}</p>
-                <p className="text-[10px] text-slate-500">{dim.desc}</p>
-              </div>
+              <p className="text-xs font-bold text-slate-800">{dim.label}</p>
               <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded-md ${
-                dim.score >= 80 ? 'bg-emerald-100 text-emerald-800' : (dim.score >= 50 ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800')
+                typeof dim.score !== 'number' ? 'bg-slate-100 text-slate-500'
+                  : dim.score >= 80 ? 'bg-emerald-100 text-emerald-800'
+                    : (dim.score >= 50 ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800')
               }`}>
-                {dim.score}/100
+                {typeof dim.score === 'number' ? `${dim.score}/100` : 'Not checked'}
               </span>
             </div>
           ))}
         </div>
+
+        {audit.checks?.length > 0 && (
+          <div className="pt-2 space-y-2">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600">Evidence per check</h3>
+            {audit.checks.map((c) => (
+              <div key={c.id} className="p-3 rounded-xl border border-slate-100 text-xs space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-semibold text-slate-800">{c.label}</span>
+                  <span className={`px-2 py-0.5 rounded-md font-bold ${statusStyle[c.status]}`}>{statusLabel[c.status]}</span>
+                </div>
+                <p className="text-slate-600">{c.detail}</p>
+                {c.evidence && (
+                  <p className="text-[10px] text-slate-400">
+                    Evidence ({c.evidence.kind.replace('_', ' ')})
+                    {c.evidence.url && <> \u2014 <a href={c.evidence.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">source</a></>}
+                    {c.evidence.observed && typeof c.evidence.observed === 'string' && <> \u2014 &ldquo;{c.evidence.observed}&rdquo;</>}
+                    {' '}\u2022 checked {new Date(c.evidence.checked_at).toLocaleDateString()}
+                  </p>
+                )}
+              </div>
+            ))}
+            {audit.limitations?.map((l, i) => (
+              <p key={i} className="text-[10px] text-slate-400 italic">{l}</p>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* 4 Evidence Cards (Positive, Warnings, Contradictions, Missing Info) */}
@@ -235,7 +292,7 @@ export default function ConferenceDetailPage() {
               ))}
             </ul>
           ) : (
-            <p className="text-xs text-slate-400 italic">No verified positive indicators registered.</p>
+            <p className="text-xs text-slate-400 italic">No passing checks yet.</p>
           )}
         </div>
 
@@ -257,7 +314,7 @@ export default function ConferenceDetailPage() {
               ))}
             </ul>
           ) : (
-            <p className="text-xs text-slate-500">✓ No critical falsifications or predatory contradictions detected.</p>
+            <p className="text-xs text-slate-500">✓ No failed checks among the checks that could be performed.</p>
           )}
         </div>
 
@@ -301,7 +358,7 @@ export default function ConferenceDetailPage() {
               ))}
             </ul>
           ) : (
-            <p className="text-xs text-slate-400 italic">All required scientific disclosure metadata is present.</p>
+            <p className="text-xs text-slate-400 italic">Nothing flagged as missing.</p>
           )}
         </div>
 

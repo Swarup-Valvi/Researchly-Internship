@@ -13,31 +13,43 @@ import {
   Layers,
   Award,
   BookmarkPlus,
-  Video
+  Video,
+  HelpCircle
 } from 'lucide-react';
+import { riskDisplay } from '../lib/risk';
 
 export default function ConferenceCard({ conference, onTrack }) {
   const getRiskBadge = (risk, score) => {
-    if (risk === 'Low' || score >= 80) {
+    const d = riskDisplay(risk, score);
+    const suffix = d.score !== null ? ` (${d.score}/100)` : '';
+    if (d.key === 'low') {
       return (
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
           <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-          <span>Low Risk ({score}/100)</span>
+          <span>{d.label}{suffix}</span>
         </span>
       );
     }
-    if (risk === 'Medium' || score >= 50) {
+    if (d.key === 'medium') {
       return (
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
           <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
-          <span>Medium Risk ({score}/100)</span>
+          <span>{d.label}{suffix}</span>
+        </span>
+      );
+    }
+    if (d.key === 'high') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+          <AlertOctagon className="w-3.5 h-3.5 text-rose-600" />
+          <span>{d.label}{suffix}</span>
         </span>
       );
     }
     return (
-      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 animate-pulse">
-        <AlertOctagon className="w-3.5 h-3.5 text-rose-600" />
-        <span>Predatory Alert ({score}/100)</span>
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+        <HelpCircle className="w-3.5 h-3.5 text-slate-500" />
+        <span>{d.label}</span>
       </span>
     );
   };

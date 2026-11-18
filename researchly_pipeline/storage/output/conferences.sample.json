@@ -1,0 +1,371 @@
+[
+  {
+    "conference_id": "106693cb2fcc45ffef8a699aaebb12ec07981b20659868162814701a26346a8a",
+    "canonical_name": "Symposium on Secure Data Analytics",
+    "acronym": "SECDA",
+    "year": 2027,
+    "edition": "13th",
+    "website_url": "https://secda2027.example.org/",
+    "location": {
+      "city": "Toronto",
+      "country": "Canada",
+      "venue": null,
+      "is_virtual": false
+    },
+    "dates": {
+      "conference_start": "2027-08-03",
+      "conference_end": "2027-08-05",
+      "submission_deadline": "2027-03-01",
+      "notification_date": null,
+      "camera_ready": null,
+      "deadline_timezone": null
+    },
+    "topics": [],
+    "tracks": [],
+    "publisher": "ACM",
+    "sponsors": {
+      "claimed": [
+        "ACM SIGSAC"
+      ],
+      "verified_source": "https://www.acm.org/conferences"
+    },
+    "indexing_claims": {
+      "scopus": "unknown",
+      "wos": "unknown",
+      "dblp": "unknown"
+    },
+    "ranking_claims": [],
+    "fees": {
+      "currency": null,
+      "amount": null,
+      "notes": null
+    },
+    "claim_snippets": [],
+    "provenance": {
+      "primary_source": "acm",
+      "source_urls": [
+        "https://www.acm.org/conferences",
+        "http://www.wikicfp.com/cfp/call?conference=computer%20science"
+      ],
+      "scraped_at": "2026-11-18T10:10:46+00:00",
+      "extraction_method": "structured",
+      "confidence": 1.0
+    },
+    "raw_snapshot_ref": "raw/acm/99e496a243212feeba818bcc.html.gz",
+    "dedup": {
+      "merged_from": [
+        "https://www.acm.org/conferences",
+        "http://www.wikicfp.com/cfp/call?conference=computer%20science"
+      ],
+      "canonical_source": "acm"
+    }
+  },
+  {
+    "conference_id": "776a5a9bc74598072331853899088ffade8d2261134ab8c9d963f87c434b4933",
+    "canonical_name": "Workshop on Visual Inspection Systems",
+    "acronym": "VISIO",
+    "year": 2026,
+    "edition": null,
+    "website_url": "http://www.wikicfp.com/cfp/servlet/event.showcfp?eventid=900005&copyownerid=5",
+    "location": {
+      "city": null,
+      "country": null,
+      "venue": null,
+      "is_virtual": true
+    },
+    "dates": {
+      "conference_start": "2026-12-01",
+      "conference_end": "2026-12-02",
+      "submission_deadline": "2026-09-30T23:59-12:00",
+      "notification_date": null,
+      "camera_ready": null,
+      "deadline_timezone": "AoE"
+    },
+    "topics": [],
+    "tracks": [],
+    "publisher": null,
+    "sponsors": {
+      "claimed": [],
+      "verified_source": null
+    },
+    "indexing_claims": {
+      "scopus": "unknown",
+      "wos": "unknown",
+      "dblp": "unknown"
+    },
+    "ranking_claims": [],
+    "fees": {
+      "currency": null,
+      "amount": null,
+      "notes": null
+    },
+    "claim_snippets": [],
+    "provenance": {
+      "primary_source": "wikicfp",
+      "source_urls": [
+        "http://www.wikicfp.com/cfp/call?conference=computer%20science&page=2"
+      ],
+      "scraped_at": "2026-11-18T10:10:46+00:00",
+      "extraction_method": "structured",
+      "confidence": 0.66
+    },
+    "raw_snapshot_ref": "raw/wikicfp/fc52ea91bbd71b73e7048cc7.html.gz",
+    "dedup": {
+      "merged_from": [
+        "http://www.wikicfp.com/cfp/call?conference=computer%20science&page=2"
+      ],
+      "canonical_source": "wikicfp"
+    }
+  },
+  {
+    "conference_id": "90808a6813ea879d3a895abeb2518947c5b96c5ef43de0fd9421112fe7f0916f",
+    "canonical_name": "Conference on Human Factors in Extended Reality",
+    "acronym": "HCIXR",
+    "year": 2027,
+    "edition": null,
+    "website_url": "https://hcixr2027.example.org/",
+    "location": {
+      "city": "Osaka",
+      "country": "Japan",
+      "venue": null,
+      "is_virtual": false
+    },
+    "dates": {
+      "conference_start": "2027-09-20",
+      "conference_end": "2027-09-23",
+      "submission_deadline": "2027-04-12",
+      "notification_date": null,
+      "camera_ready": null,
+      "deadline_timezone": null
+    },
+    "topics": [],
+    "tracks": [],
+    "publisher": "ACM",
+    "sponsors": {
+      "claimed": [
+        "ACM SIGCHI"
+      ],
+      "verified_source": "https://www.acm.org/conferences"
+    },
+    "indexing_claims": {
+      "scopus": "unknown",
+      "wos": "unknown",
+      "dblp": "unknown"
+    },
+    "ranking_claims": [],
+    "fees": {
+      "currency": null,
+      "amount": null,
+      "notes": null
+    },
+    "claim_snippets": [],
+    "provenance": {
+      "primary_source": "acm",
+      "source_urls": [
+        "https://www.acm.org/conferences"
+      ],
+      "scraped_at": "2026-11-18T10:10:46+00:00",
+      "extraction_method": "structured",
+      "confidence": 0.95
+    },
+    "raw_snapshot_ref": "raw/acm/99e496a243212feeba818bcc.html.gz",
+    "dedup": {
+      "merged_from": [
+        "https://www.acm.org/conferences"
+      ],
+      "canonical_source": "acm"
+    }
+  },
+  {
+    "conference_id": "988b6aac9ae44f7cc0e5d19f82944cbfae338ff6d8c0e6c1c40f12217419fcfc",
+    "canonical_name": "Global Congress of Innovative Research",
+    "acronym": "GCIR",
+    "year": 2027,
+    "edition": null,
+    "website_url": "https://gcir2027.example.net/",
+    "location": {
+      "city": "Dubai",
+      "country": "UAE",
+      "venue": null,
+      "is_virtual": false
+    },
+    "dates": {
+      "conference_start": "2027-10-09",
+      "conference_end": "2027-10-10",
+      "submission_deadline": "2027-09-01",
+      "notification_date": null,
+      "camera_ready": null,
+      "deadline_timezone": null
+    },
+    "topics": [],
+    "tracks": [],
+    "publisher": null,
+    "sponsors": {
+      "claimed": [
+        "Organized by World Research Syndicate."
+      ],
+      "verified_source": null
+    },
+    "indexing_claims": {
+      "scopus": "claimed",
+      "wos": "claimed",
+      "dblp": "unknown"
+    },
+    "ranking_claims": [],
+    "fees": {
+      "currency": "USD",
+      "amount": 300.0,
+      "notes": "Publication fee: $300 per paper (mandatory)."
+    },
+    "claim_snippets": [
+      "All papers are Scopus and Web of Science indexed.",
+      "Publication fee: $300 per paper (mandatory).",
+      "Guaranteed acceptance within 48 hours.",
+      "Within 48 hours of submission",
+      "Organized by World Research Syndicate."
+    ],
+    "provenance": {
+      "primary_source": "individual",
+      "source_urls": [
+        "https://gcir2027.example.net/",
+        "http://www.wikicfp.com/cfp/call?conference=computer%20science"
+      ],
+      "scraped_at": "2026-11-18T10:10:46+00:00",
+      "extraction_method": "heuristic",
+      "confidence": 0.77
+    },
+    "raw_snapshot_ref": "raw/individual/d4169f014533cd663b4c3993.html.gz",
+    "dedup": {
+      "merged_from": [
+        "https://gcir2027.example.net/",
+        "http://www.wikicfp.com/cfp/call?conference=computer%20science"
+      ],
+      "canonical_source": "individual"
+    }
+  },
+  {
+    "conference_id": "99f01971e192206bc05bdf81bd7bfe04f3baa351f6819908188377934ab9cead",
+    "canonical_name": "Workshop on Graph Methods in Biology",
+    "acronym": "GRAPHM",
+    "year": 2026,
+    "edition": null,
+    "website_url": "https://graphm2026.example.org/",
+    "location": {
+      "city": "Vienna",
+      "country": "Austria",
+      "venue": null,
+      "is_virtual": false
+    },
+    "dates": {
+      "conference_start": "2026-11-10",
+      "conference_end": "2026-11-12",
+      "submission_deadline": null,
+      "notification_date": null,
+      "camera_ready": null,
+      "deadline_timezone": null
+    },
+    "topics": [],
+    "tracks": [],
+    "publisher": "Springer",
+    "sponsors": {
+      "claimed": [],
+      "verified_source": "https://link.springer.com/conference/"
+    },
+    "indexing_claims": {
+      "scopus": "unknown",
+      "wos": "unknown",
+      "dblp": "unknown"
+    },
+    "ranking_claims": [],
+    "fees": {
+      "currency": null,
+      "amount": null,
+      "notes": null
+    },
+    "claim_snippets": [],
+    "provenance": {
+      "primary_source": "springer",
+      "source_urls": [
+        "https://link.springer.com/conference/"
+      ],
+      "scraped_at": "2026-11-18T10:10:46+00:00",
+      "extraction_method": "structured",
+      "confidence": 0.86
+    },
+    "raw_snapshot_ref": "raw/springer/8931452423a6a8f19d70c89d.html.gz",
+    "dedup": {
+      "merged_from": [
+        "https://link.springer.com/conference/"
+      ],
+      "canonical_source": "springer"
+    }
+  },
+  {
+    "conference_id": "afbe86d866a1de369994c0553c14f57910c40e52eb72451ddb277b2ddddf74af",
+    "canonical_name": "IEEE International Conference on Applied Learning Systems",
+    "acronym": "ICALS",
+    "year": 2027,
+    "edition": null,
+    "website_url": "https://ials2027.example.org/",
+    "location": {
+      "city": "Lisbon",
+      "country": "Portugal",
+      "venue": "Centro de Congressos",
+      "is_virtual": false
+    },
+    "dates": {
+      "conference_start": "2027-06-14",
+      "conference_end": "2027-06-18",
+      "submission_deadline": "2027-01-20",
+      "notification_date": "2027-03-10",
+      "camera_ready": "2027-04-05",
+      "deadline_timezone": null
+    },
+    "topics": [],
+    "tracks": [],
+    "publisher": "IEEE",
+    "sponsors": {
+      "claimed": [
+        "IEEE Computer Society",
+        "The conference is technically co-sponsored by the IEEE Computer Society."
+      ],
+      "verified_source": "https://www.ieee.org/conferences/"
+    },
+    "indexing_claims": {
+      "scopus": "claimed",
+      "wos": "unknown",
+      "dblp": "claimed"
+    },
+    "ranking_claims": [],
+    "fees": {
+      "currency": "USD",
+      "amount": 650.0,
+      "notes": "Registration fee: USD 650 regular, USD 350 students."
+    },
+    "claim_snippets": [
+      "Accepted papers will be submitted to IEEE Xplore and indexed by DBLP and Scopus.",
+      "Registration fee: USD 650 regular, USD 350 students.",
+      "The conference is technically co-sponsored by the IEEE Computer Society."
+    ],
+    "provenance": {
+      "primary_source": "ieee",
+      "source_urls": [
+        "https://www.ieee.org/conferences/",
+        "https://ials2027.example.org/",
+        "http://www.wikicfp.com/cfp/call?conference=computer%20science"
+      ],
+      "scraped_at": "2026-11-18T10:10:46+00:00",
+      "extraction_method": "structured",
+      "confidence": 1.0
+    },
+    "raw_snapshot_ref": "raw/ieee/8905ad893e5cb835b3b124b7.html.gz",
+    "dedup": {
+      "merged_from": [
+        "https://www.ieee.org/conferences/",
+        "https://ials2027.example.org/",
+        "http://www.wikicfp.com/cfp/call?conference=computer%20science"
+      ],
+      "canonical_source": "ieee"
+    }
+  }
+]

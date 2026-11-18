@@ -1,0 +1,11 @@
+{
+  "http://www.wikicfp.com/cfp/call?conference=computer%20science": "wikicfp_list.html",
+  "http://www.wikicfp.com/cfp/call?conference=computer%20science&page=2": "wikicfp_list_p2.html",
+  "http://www.wikicfp.com/cfp/servlet/event.showcfp?eventid=900003&copyownerid=3": "wikicfp_detail.html",
+  "https://www.ieee.org/conferences/": "ieee_jsonld.html",
+  "https://www.acm.org/conferences": "acm_listing.html",
+  "https://link.springer.com/conference/": "springer_listing.html",
+  "https://ials2027.example.org/": "individual_jsonld.html",
+  "https://gcir2027.example.net/": "individual_heuristic.html",
+  "https://broken.example.org/": "individual_broken.html"
+}

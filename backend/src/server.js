@@ -37,7 +37,9 @@ app.get('/api/health', async (req, res) => {
     timestamp: new Date().toISOString(),
     llm_configured: !!config.geminiApiKey || !!config.openaiApiKey,
     llm_provider: config.geminiApiKey ? 'Google Gemini' : (config.openaiApiKey ? 'OpenAI' : 'Autonomous Fallback Engine'),
-    scheduler_interval: 'Every 12 Hours (0 */12 * * *)',
+    scheduler_interval: 'Every 12 Hours (best-effort)',
+    credibility_engine: 'v2-evidence',
+    live_checks_enabled: config.enableLiveChecks,
     database: supabaseHealth
   });
 });
@@ -75,7 +77,7 @@ const server = app.listen(config.port, () => {
   console.log(`🚀 Researchly.io Backend API running on port ${config.port}`);
   console.log(`📡 URL: http://localhost:${config.port}`);
   console.log(`🤖 LLM Provider: ${config.geminiApiKey ? 'Google Gemini API' : (config.openaiApiKey ? 'OpenAI API' : 'Autonomous Heuristic/Mock Mode')}`);
-  console.log(`⏰ Scheduler: Active (Running every 12 hours for CFP updates)`);
+  console.log(`⏰ Scheduler: pipeline import + re-audit every 12h (best-effort)`);
   console.log(`====================================================`);
 
   // Start background 12-hour discovery scheduler

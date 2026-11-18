@@ -1,0 +1,86 @@
+# Source registry. Every source documents its access method and review status.
+# SAFETY: live crawling of a source is refused unless tos_reviewed: true.
+# Review the site's Terms of Service + robots.txt, then flip the flag yourself.
+# Selectors are STARTING POINTS modelled on each site's public page structure;
+# validate them against saved real pages (storage/raw/) and patch here, not in code.
+
+defaults:
+  user_agent: "ResearchlyBot/0.1 (+https://researchly-5mq7.onrender.com; contact: CHANGE-ME@example.com)"
+  respect_robots: true
+  timeout_seconds: 20
+  max_retries: 3
+  backoff_base_seconds: 2.0
+  requests_per_minute: 6        # per-domain token bucket
+  max_pages: 5
+
+sources:
+  wikicfp:
+    enabled: true
+    tos_reviewed: false
+    trust: 0.4
+    access: "public HTML tables"
+    notes: "Community wiki. Lowest trust. Never used as authority for sponsor/indexing claims."
+    seed_urls:
+      - "http://www.wikicfp.com/cfp/call?conference=computer%20science"
+    requests_per_minute: 4
+    selectors:
+      row_header: "tr[bgcolor] td[rowspan='2']"   # first cell of each 2-row record
+      event_link: "a[href*='eventid=']"
+
+  ieee:
+    enabled: true
+    tos_reviewed: false
+    trust: 1.0
+    access: "public conference listing pages; prefer JSON-LD, then selectors"
+    seed_urls:
+      - "https://www.ieee.org/conferences/"          # placeholder; replace with a listing you reviewed
+    selectors:
+      item: "div.conference-item, li.conference"
+      name: ".conference-title, h3 a"
+      link: "h3 a, a.conference-link"
+      dates: ".conference-dates, .dates"
+      location: ".conference-location, .location"
+      sponsor: ".sponsor, .conference-sponsor"
+      deadline: ".deadline, .submission-deadline"
+
+  acm:
+    enabled: true
+    tos_reviewed: false
+    trust: 1.0
+    access: "public conference calendar pages"
+    seed_urls:
+      - "https://www.acm.org/conferences"              # placeholder
+    selectors:
+      item: "div.conference, li.conference-item"
+      name: "a.conference-name, h3 a"
+      link: "a.conference-name, h3 a"
+      dates: ".dates, .conference-date"
+      location: ".location, .conference-location"
+      sponsor: ".sponsor, .sig"
+      deadline: ".deadline"
+
+  springer:
+    enabled: true
+    tos_reviewed: false
+    trust: 0.9
+    access: "public proceedings series pages"
+    seed_urls:
+      - "https://link.springer.com/conference/"        # placeholder
+    selectors:
+      item: "li.c-list-group__item, div.conference"
+      name: "h3 a, a.title"
+      link: "h3 a, a.title"
+      dates: ".dates, .c-meta__item--dates"
+      location: ".location, .c-meta__item--location"
+      sponsor: ".sponsor"
+      deadline: ".deadline"
+
+  individual:
+    enabled: true
+    tos_reviewed: false
+    trust: 0.7
+    access: "seed URLs discovered from other sources; JSON-LD first, heuristics second"
+    seed_urls: []
+    selectors:
+      name: "h1, title"
+      important_dates_headings: ["important dates", "key dates", "deadlines", "dates"]

@@ -1,6 +1,6 @@
 # Researchly.io — AI-Powered Academic Intelligence & Submission Platform
 
-**Researchly.io** is a full-stack academic platform combining a LinkedIn-style scholarly professional network, an automated 9-dimension conference credibility audit engine, an AI-powered paper-to-venue recommender, a submission pipeline Kanban tracker, and an LLM peer-review feedback engine.
+**Researchly.io** is a full-stack academic platform combining a LinkedIn-style scholarly professional network, an evidence-based conference credibility audit engine (scores only what it can verify), an AI-powered paper-to-venue recommender, a submission pipeline Kanban tracker, and an LLM peer-review feedback engine.
 
 ---
 
@@ -166,8 +166,23 @@ To create all PostgreSQL tables, indexes, and Row-Level-Security (RLS) policies 
      - Actionable Revision Suggestions for Acceptance
      - Best Matching Conference Venues
 
-6. **12-Hour Automated Discovery Scheduler**:
-   - Node-cron task scheduled every 12 hours (`0 */12 * * *`).
-   - Uses LLM to crawl new tech conference CFPs, evaluate credibility, and detect deadline drift.
-   - Manual **12h LLM Sync** trigger button available in the navigation bar and Discover page.
+6. **Scraping pipeline + scheduled ingestion** (`researchly_pipeline/`, `.github/workflows/ingest.yml`):
 
+   - Python pipeline (IEEE / ACM / Springer / WikiCFP / individual sites) -> normalized, provenance-tracked, schema-validated `conferences.json`.
+   - A GitHub Action runs it every 12h and POSTs the result to `POST /api/conferences/ingest` (token-protected).
+   - The LLM is **not** used to produce conference data. Live crawling is refused for any source until you review its terms and set `tos_reviewed: true`.
+   - See `researchly_pipeline/README.md`.
+
+## Data integrity rules
+
+- Conference records come only from the pipeline (or the clearly-labelled `curated_seed` list, which is hand-entered and unverified).
+- A credibility check that cannot be performed is shown as **Not checked**, never defaulted to a good score. A missing score is **"Not enough evidence"**, never "Predatory".
+- Scopus / Web of Science claims are never marked verified (no free data source); the audit says how to verify them.
+- Wording is "risk indicators", not accusations; every check lists its evidence, source and date.
+
+## Tests
+
+```bash
+cd backend && npm test                              # 18 tests (engine, lookups, ingest, auth)
+cd researchly_pipeline && python -m pytest          # 42 tests (parsers, dedup, retries, schema, idempotency)
+```
