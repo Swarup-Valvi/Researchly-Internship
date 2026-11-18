@@ -166,16 +166,37 @@ To create all PostgreSQL tables, indexes, and Row-Level-Security (RLS) policies 
      - Actionable Revision Suggestions for Acceptance
      - Best Matching Conference Venues
 
-6. **Scraping pipeline + scheduled ingestion** (`researchly_pipeline/`, `.github/workflows/ingest.yml`):
+6. **Live ingestion** (`researchly_pipeline/`, `.github/workflows/ingest-ccfddl.yml`, `.github/workflows/enrich-nightly.yml`):
 
-   - Python pipeline (IEEE / ACM / Springer / WikiCFP / individual sites) -> normalized, provenance-tracked, schema-validated `conferences.json`.
-   - A GitHub Action runs it every 12h and POSTs the result to `POST /api/conferences/ingest` (token-protected).
-   - The LLM is **not** used to produce conference data. Live crawling is refused for any source until you review its terms and set `tos_reviewed: true`.
-   - See `researchly_pipeline/README.md`.
+   - **Structured facts** (names, dates, deadlines with time zones, places, CORE/CCF ranks, DBLP keys) come from the
+     open [ccfddl](https://github.com/ccfddl/ccf-deadlines) dataset (MIT, © CCFDDL; see `THIRD_PARTY.md`), read
+     from one shallow clone per changed commit. Workflow **ingest-ccfddl** runs every 12 h and POSTs to
+     `POST /api/conferences/ingest` (token-protected).
+   - **Grounded enrichment** (workflow **enrich-nightly**, 00:00 IST): an LLM reads each conference's *own website*
+     and may only fill empty fields (publisher, proceedings series, sponsors, fee text, tracks, topics, indexing
+     *claims*, contact email domain). Every value must quote the fetched page verbatim or it is dropped and counted
+     as `hallucination_rejected`. The LLM never supplies facts from memory and never overrides ccfddl's dates,
+     deadlines, ranks or location; disagreements are logged in `provenance.conflicts`.
+   - Other scrapers (IEEE / ACM / Springer / WikiCFP / individual sites) remain available.
+   - Live fetching is refused for any source (and for enrichment) until you review its terms and set `tos_reviewed: true`.
+   - See `researchly_pipeline/README.md` and `backend/README.md`.
+
+## Cutover from the hand-entered list to live data
+
+The 27 hand-entered conferences in `backend/src/db/realEvents.js` (`curated_seed`, unverified) are still shown by
+default. To switch the app to pipeline data only:
+
+1. Apply `backend/migrations/001` → `002` → `003` (see `backend/migrations/README.md`).
+2. Review ccfddl's terms, set `tos_reviewed: true` for `ccfddl` in `researchly_pipeline/config/sources.yaml`, and
+   let **ingest-ccfddl** run once (or trigger it with *Run workflow*). Confirm records arrived:
+   `GET /api/conferences` shows `data_origin: "pipeline"` entries.
+3. Set `ENABLE_CURATED_SEED=false` in the backend environment and restart. The seed list is then not loaded and
+   only pipeline records are served. Reverting is the same flag set back to `true`.
 
 ## Data integrity rules
 
 - Conference records come only from the pipeline (or the clearly-labelled `curated_seed` list, which is hand-entered and unverified).
+- LLM-extracted values are kept only when a verbatim quote from the conference's own page supports them; each carries per-field provenance (URL, quote, model, time). Ranks from ccfddl are "listed in a community-maintained dataset", not verified.
 - A credibility check that cannot be performed is shown as **Not checked**, never defaulted to a good score. A missing score is **"Not enough evidence"**, never "Predatory".
 - Scopus / Web of Science claims are never marked verified (no free data source); the audit says how to verify them.
 - Wording is "risk indicators", not accusations; every check lists its evidence, source and date.
@@ -183,6 +204,6 @@ To create all PostgreSQL tables, indexes, and Row-Level-Security (RLS) policies 
 ## Tests
 
 ```bash
-cd backend && npm test                              # 18 tests (engine, lookups, ingest, auth)
-cd researchly_pipeline && python -m pytest          # 42 tests (parsers, dedup, retries, schema, idempotency)
+cd backend && npm test                              # engine, lookups (DBLP/RDAP/OpenAlex, mocked), ingest, committee privacy, ccfddl checks
+cd researchly_pipeline && python -m pytest          # parsers, ccfddl, grounded enrichment (mocked LLM), dedup, schema, idempotency
 ```

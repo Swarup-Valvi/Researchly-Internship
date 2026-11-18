@@ -13,6 +13,12 @@ export default function Footer() {
           <span className="text-slate-400">— AI-Powered Academic Discovery, Credibility Verification & Submissions</span>
         </div>
 
+        <div className="text-[11px] text-slate-500">
+          Deadline data:{' '}
+          <a href="https://github.com/ccfddl/ccf-deadlines" target="_blank" rel="noopener noreferrer"
+             className="underline hover:text-slate-700">ccfddl</a>{' '}(MIT)
+        </div>
+
         <div className="flex items-center gap-4 text-[11px]">
           <span className="flex items-center gap-1 text-slate-600">
             <Sparkles className="w-3.5 h-3.5 text-blue-600" />
