@@ -37,6 +37,7 @@ class RawRecord(BaseModel):
     indexing_text: Optional[str] = None  # raw claim text, scanned later
     fees_text: Optional[str] = None
     claim_snippets: list[str] = Field(default_factory=list)  # raw sentences: indexing / fee / sponsor / red-flag wording
+    committee: list[dict] = Field(default_factory=list)  # {"name", "affiliation"|None}; names only, no contact data
     ranking: list[dict] = Field(default_factory=list)
     tracks: list[dict] = Field(default_factory=list)  # {"name": str, "deadline_text": str|None}
     is_virtual: Optional[bool] = None
@@ -87,6 +88,12 @@ class RankingClaim(_Strict):
     source_url: str
 
 
+class CommitteeMember(_Strict):
+    """Public program-committee listing: name + stated affiliation only. Never contact data."""
+    name: str
+    affiliation: Optional[str] = None
+
+
 class Fees(_Strict):
     currency: Optional[str] = None
     amount: Optional[float] = None
@@ -123,6 +130,7 @@ class Conference(_Strict):
     ranking_claims: list[RankingClaim] = Field(default_factory=list)
     fees: Fees = Field(default_factory=Fees)
     claim_snippets: list[str] = Field(default_factory=list)
+    committee: list[CommitteeMember] = Field(default_factory=list)
     provenance: Provenance
     raw_snapshot_ref: Optional[str] = None
     dedup: Dedup

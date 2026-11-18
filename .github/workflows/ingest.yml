@@ -50,11 +50,13 @@ jobs:
           if [ ! -s "$OUT" ]; then echo "No pipeline output (no reviewed sources?). Nothing to ingest."; exit 0; fi
           curl -fsS --retry 3 --retry-delay 20 --max-time 180 -X POST "$BACKEND_URL/api/conferences/ingest" \
             -H "content-type: application/json" -H "x-ingest-token: $INGEST_TOKEN" --data-binary @"$OUT"
+      # Only dead-letter notes and run metrics are uploaded. storage/output/ (conferences.json) is NOT uploaded:
+      # it can contain program-committee names, which must not be persisted outside the audit.
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: pipeline-output
+          name: pipeline-diagnostics
           path: |
-            researchly_pipeline/storage/output/
             researchly_pipeline/storage/failed/
+            researchly_pipeline/storage/output/metrics.json
           if-no-files-found: ignore

@@ -12,6 +12,8 @@ export const config = {
   ingestToken: (process.env.INGEST_TOKEN || '').trim(),
   pipelineOutputPath: (process.env.PIPELINE_OUTPUT_PATH || '').trim(),
   pipelineOutputUrl: (process.env.PIPELINE_OUTPUT_URL || '').trim(),
+  // Contact email for OpenAlex's "polite pool" (optional). Sent as ?mailto= only when set; never hard-coded.
+  openAlexMailto: (process.env.OPENALEX_MAILTO || '').trim(),
   enableLiveChecks: (process.env.ENABLE_LIVE_CHECKS || '').trim().toLowerCase() === 'true',
   enableCuratedSeed: (process.env.ENABLE_CURATED_SEED || 'true').trim().toLowerCase() !== 'false',
   nodeEnv: (process.env.NODE_ENV || 'development').trim()

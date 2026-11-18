@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 import confidence
-from models import (Conference, Dates, Dedup, Fees, IndexingClaims, Location, Provenance, RankingClaim,
+from models import (CommitteeMember, Conference, Dates, Dedup, Fees, IndexingClaims, Location, Provenance, RankingClaim,
                     RawRecord, Sponsors, Track)
 from normalizer import names, topics
 from normalizer.dates import detect_timezone, parse_date, parse_range
@@ -94,6 +94,7 @@ def normalize(raw: RawRecord) -> tuple[Optional[Conference], Optional[str]]:
         sponsors=Sponsors(claimed=[s for s in raw.sponsors_text if s],
                           verified_source=raw.source_url if authoritative else None),
         indexing_claims=parse_claims(raw.indexing_text, raw.source), ranking_claims=rankings, fees=parse_fees(raw.fees_text), claim_snippets=list(dict.fromkeys(raw.claim_snippets))[:8],
+        committee=[CommitteeMember(name=m["name"], affiliation=m.get("affiliation")) for m in raw.committee if m.get("name")],
         provenance=Provenance(primary_source=raw.source, source_urls=urls,
                               scraped_at=raw.scraped_at or datetime.now(timezone.utc).isoformat(timespec="seconds"),
                               extraction_method=raw.extraction_method, confidence=0.0),

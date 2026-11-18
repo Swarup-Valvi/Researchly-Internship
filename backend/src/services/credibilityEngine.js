@@ -63,6 +63,45 @@ function claimTexts(conf) {
     .filter((t) => typeof t === 'string' && t.trim());
 }
 
+// Thresholds for the committee check. A warn needs a larger sample than a pass: a sparse result is not_checked.
+export const COMMITTEE_RULES = { minForPass: 3, minForWarn: 5, passMatchFrac: 0.5, warnResolvedFrac: 0.3 };
+
+/**
+ * Program committee vs OpenAlex, from AGGREGATE counts only (see lookups.committeeLookup).
+ *   pass: >= 3 lookups and more than half of sampled members with a stated affiliation have names that correspond
+ *         to real researchers at the stated institutions.
+ *   warn: >= 5 lookups and fewer than 30% of sampled names correspond to any researcher profile.
+ *   not_checked: everything else (no committee, live checks off, lookups failed, sparse or in-between results).
+ * It never returns fail, and never claims the committee is verified or genuine.
+ * `c` = fresh lookup summary, else the aggregate summary stored on the conference from the last live audit.
+ */
+function committeeCheck(c, pageUrl, now) {
+  const id = 'committee_verification'; const label = 'Program committee names vs researcher profiles';
+  if (!c) return notChecked(id, 'tpc', label, 'Live OpenAlex lookup not run (requires ENABLE_LIVE_CHECKS during pipeline ingest).');
+  if (!c.ok) {
+    return notChecked(id, 'tpc', label, c.error === 'no committee listed' ? 'No program committee listed on record.' : `Lookup failed: ${c.error}`);
+  }
+  const observed = {
+    listed: c.listed, sampled: c.sampled, looked_up: c.looked_up, failed_lookups: c.failed_lookups,
+    resolved: c.resolved, with_stated_affiliation: c.with_stated_affiliation, institution_matches: c.institution_matches
+  };
+  const evidence = ev('openalex_api', pageUrl, observed, c.checked_at || now);
+  const summary = `${c.institution_matches} of ${c.with_stated_affiliation} sampled members with a stated affiliation matched; ` +
+    `${c.resolved} of ${c.looked_up} sampled names found in OpenAlex (${c.listed} listed).`;
+  const caveat = ' This does not show that the committee is real or that these people agreed to serve.';
+  if (c.looked_up >= COMMITTEE_RULES.minForPass && c.with_stated_affiliation >= COMMITTEE_RULES.minForPass &&
+      c.institution_matches / c.with_stated_affiliation > COMMITTEE_RULES.passMatchFrac) {
+    return check(id, 'tpc', label, 'pass',
+      `Most sampled names correspond to real researchers at the stated institutions: ${summary}${caveat}`, evidence);
+  }
+  if (c.looked_up >= COMMITTEE_RULES.minForWarn && c.resolved / c.looked_up < COMMITTEE_RULES.warnResolvedFrac) {
+    return check(id, 'tpc', label, 'warn',
+      `Few sampled names correspond to researcher profiles: ${summary} This can also happen with name variants, ` +
+      'transliteration or early-career researchers; treat it as a risk indicator and check the list manually.', evidence);
+  }
+  return { ...notChecked(id, 'tpc', label, `Inconclusive or too few lookups: ${summary}`), evidence };
+}
+
 export function evaluateConferenceCredibility(conf, lookups = {}) {
   const now = new Date().toISOString();
   const checks = [];
@@ -149,9 +188,8 @@ export function evaluateConferenceCredibility(conf, lookups = {}) {
       ? `The site claims indexing in: ${claimedIdx.join(', ')}. Cannot be verified with free data; check the Scopus Sources list / Clarivate Master Journal List directly.`
       : 'No Scopus/WoS claim recorded and no free data source to verify one.'));
 
-  // --- committee / venue (not automated yet) -----------------------------------------------------------
-  checks.push(notChecked('committee_verification', 'tpc', 'Program committee affiliations',
-    'Not automated yet (planned: match committee names to OpenAlex/DBLP affiliations).'));
+  // --- committee (OpenAlex, live only) / venue (not automated yet) ---------------------------------------
+  checks.push(committeeCheck(lookups.committee ?? conf.committee_summary, sourceUrl || officialUrl, now));
   checks.push(notChecked('venue_verification', 'venue', 'Physical venue verification',
     'Not automated yet.'));
 
@@ -244,7 +282,11 @@ function buildAudit(conf, checks, now) {
     missing_information: checks.filter((c) => c.status === 'not_checked').map(line),
     limitations: [
       'Risk indicators, not a verdict. Absence from a crawl or database is not proof a venue is illegitimate.',
-      'Scopus / Web of Science status and committee/venue verification are not automated; confirm those directly.'
+      'Scopus / Web of Science status and venue verification are not automated; confirm those directly.',
+      'The committee check compares up to 10 sampled names with OpenAlex researcher profiles by name and stated ' +
+      'affiliation. It never verifies a committee.',
+      'Real researchers can be listed on a committee without their knowledge or consent; a name match does not mean ' +
+      'they agreed to serve.'
     ],
     updated_at: now
   };

@@ -4,6 +4,8 @@
  * `fetchImpl` is injectable for tests.
  */
 
+import { config } from '../config/env.js';
+
 const UA = 'ResearchlyBot/0.1 (+https://researchly-5mq7.onrender.com)';
 
 async function getJson(url, { fetchImpl = fetch, timeoutMs = 6000 } = {}) {
@@ -69,10 +71,143 @@ export async function rdapDomainAge(websiteUrl, opts = {}) {
   }
 }
 
+// --- OpenAlex: program-committee members ----------------------------------------------------------
+
+const OPENALEX_TTL_MS = 7 * 24 * 3600 * 1000;
+const openAlexCache = new Map(); // key -> { at, value }; only successful lookups are cached
+export const COMMITTEE_SAMPLE_SIZE = 10;
+
+export function clearOpenAlexCache() { openAlexCache.clear(); }
+
+/** Lower-case, strip accents and punctuation: "José  Pérez-Ruiz" -> "jose perez ruiz". */
+export function normName(s) {
+  return (s || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+// Only grammatical words and "university" in its common spellings are ignored. Words like "institute" or
+// "technology" are kept: they are what distinguishes Caltech from the University of California.
+const STOP = new Set(['university', 'universidad', 'universite', 'universitat', 'universita', 'of', 'the', 'and', 'for', 'de', 'di',
+  'da', 'del', 'la', 'department', 'dept', 'inc', 'ltd']);
+const keyTokens = (s) => normName(s).split(' ').filter((t) => t.length > 2 && !STOP.has(t));
+
+/** Same person name: identical normalized tokens as a set, or same surname + same first initial. */
+export function sameName(a, b) {
+  const x = normName(a).split(' ').filter(Boolean); const y = normName(b).split(' ').filter(Boolean);
+  if (!x.length || !y.length) return false;
+  if ([...x].sort().join(' ') === [...y].sort().join(' ')) return true;
+  return x[x.length - 1] === y[y.length - 1] && x[0][0] === y[0][0];
+}
+
+/**
+ * Institutions match when their distinctive tokens are identical as a set, or the shorter name has 2+ distinctive
+ * tokens that all appear in the longer one. Deliberately strict: "University of California" does NOT match
+ * "California Institute of Technology". A missed match only lowers confidence; a false match would be a false pass.
+ */
+export function sameInstitution(stated, candidate) {
+  const a = [...new Set(keyTokens(stated))]; const b = [...new Set(keyTokens(candidate))];
+  if (!a.length || !b.length) return false;
+  if (a.length === b.length && a.every((t) => b.includes(t))) return true;
+  const [short, long] = a.length <= b.length ? [a, b] : [b, a];
+  return short.length >= 2 && short.every((t) => long.includes(t));
+}
+
+function institutionsOf(author) {
+  const names = [
+    ...(author.last_known_institutions || []).map((i) => i?.display_name),
+    author.last_known_institution?.display_name,
+    ...(author.affiliations || []).map((a) => a?.institution?.display_name)
+  ];
+  return [...new Set(names.filter(Boolean))];
+}
+
+/**
+ * Look up one committee member on OpenAlex. Never throws.
+ * -> { ok:true, name, affiliation, resolved, institution_match, author_id, matched_institution, evidence_url, checked_at }
+ *    resolved: an OpenAlex author with the same name exists; institution_match: one of those authors is (or was)
+ *    affiliated with the stated institution (null when the page states no affiliation).
+ */
+export async function openAlexAuthorLookup(name, affiliation, opts = {}) {
+  if (!name) return { ok: false, error: 'no name' };
+  const key = `${normName(name)}|${normName(affiliation)}`;
+  const hit = openAlexCache.get(key);
+  if (hit && Date.now() - hit.at < OPENALEX_TTL_MS) return hit.value;
+  const mailto = opts.mailto ?? '';
+  const url = `https://api.openalex.org/authors?search=${encodeURIComponent(name)}&per-page=10` +
+    (mailto ? `&mailto=${encodeURIComponent(mailto)}` : '');
+  const publicUrl = `https://api.openalex.org/authors?search=${encodeURIComponent(name)}`; // evidence link without the mailto
+  try {
+    const data = await getJson(url, opts);
+    const candidates = (data?.results || []).filter((a) => sameName(name, a.display_name));
+    let best = null; let inst = null;
+    if (affiliation) {
+      for (const a of candidates) {
+        inst = institutionsOf(a).find((i) => sameInstitution(affiliation, i));
+        if (inst) { best = a; break; }
+      }
+    }
+    best = best || candidates[0] || null;
+    const value = {
+      ok: true, name, affiliation: affiliation || null,
+      resolved: candidates.length > 0,
+      institution_match: affiliation ? Boolean(inst) : null,
+      author_id: best?.id || null,
+      matched_institution: inst || null,
+      evidence_url: best?.id ? best.id.replace('https://openalex.org/', 'https://api.openalex.org/authors/') : publicUrl,
+      checked_at: new Date().toISOString()
+    };
+    openAlexCache.set(key, { at: Date.now(), value });
+    return value;
+  } catch (err) {
+    return { ok: false, error: err.name === 'AbortError' ? 'timeout' : err.message };
+  }
+}
+
+/** Evenly spaced, deterministic sample (same committee -> same sample on every run). */
+export function sampleMembers(members, n = COMMITTEE_SAMPLE_SIZE) {
+  if (members.length <= n) return members.slice();
+  const step = members.length / n;
+  return Array.from({ length: n }, (_, i) => members[Math.floor(i * step)]);
+}
+
+/**
+ * Sequential lookups for a sample of the committee (sequential = gentle on the API). Never throws.
+ * PRIVACY: returns AGGREGATE COUNTS ONLY. Member names, affiliations and OpenAlex author URLs are used inside this
+ * function and never returned, so nothing downstream (engine, store, API) can persist or expose them.
+ */
+export async function committeeLookup(committee, opts = {}) {
+  const members = (committee || []).filter((m) => m && typeof m.name === 'string' && m.name.trim());
+  if (!members.length) return { ok: false, error: 'no committee listed' };
+  const sample = sampleMembers(members, opts.sampleSize);
+  const results = [];
+  for (const m of sample) results.push(await openAlexAuthorLookup(m.name, m.affiliation, opts));
+  const done = results.filter((r) => r.ok);
+  if (!done.length) return { ok: false, error: `all ${results.length} OpenAlex lookups failed (${results[0]?.error || 'unknown'})` };
+  const withAff = done.filter((r) => r.affiliation);
+  return {
+    ok: true,
+    listed: members.length,
+    sampled: sample.length,
+    looked_up: done.length,
+    failed_lookups: results.length - done.length,
+    resolved: done.filter((r) => r.resolved).length,
+    with_stated_affiliation: withAff.length,
+    institution_matches: withAff.filter((r) => r.institution_match).length,
+    checked_at: new Date().toISOString()
+  };
+}
+
+/**
+ * opts.committee: the pipeline's committee list, passed TRANSIENTLY by the caller (it is never stored on the
+ * conference). When opts.committee is undefined (e.g. a periodic re-audit) no committee lookup is made and the key is
+ * omitted, so the engine falls back to the stored aggregate summary.
+ */
 export async function gatherLookups(conf, opts = {}) {
+  const mailto = opts.mailto ?? config.openAlexMailto;
   const [dblp, rdap] = await Promise.all([
     dblpVenueLookup(conf.acronym || conf.name, opts),
     conf.official_url ? rdapDomainAge(conf.official_url, opts) : Promise.resolve({ ok: false, error: 'no website' })
   ]);
-  return { dblp, rdap };
+  if (opts.committee === undefined) return { dblp, rdap };
+  const committee = await committeeLookup(opts.committee, { ...opts, mailto });
+  return { dblp, rdap, committee };
 }

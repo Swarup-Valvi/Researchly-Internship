@@ -42,6 +42,25 @@ logged), rate-limits per domain (token bucket), identifies itself via `user_agen
 in `sources.yaml`**), never touches login-gated/paywalled content, and stores no personal data (CFP metadata only).
 Raw snapshots keep a `.meta.json` with URL + copyright note and are for audit only — do not redistribute them.
 
+## Data handling
+The only personal data the pipeline touches is **program-committee member names and their stated affiliations**,
+taken from public CFP/committee pages (`extractors/committee.py`). Emails, URLs, phone numbers and ORCIDs are stripped
+before parsing and are never stored.
+
+Where committee names exist:
+- **`storage/output/conferences.json`**: the `committee` field of each record.
+- **`storage/raw/`**: the gzipped HTML snapshots of the pages they were scraped from.
+- **The ingest POST body**, while `conferences.json` is sent to `POST /api/conferences/ingest`.
+
+How they are contained:
+- `storage/output/conferences.json`, `storage/raw/*` and `storage/failed/*` are **gitignored**.
+- The CI workflow (`.github/workflows/ingest.yml`) **does not upload** `storage/output/` or `storage/raw/` as
+  artifacts. It uploads only `storage/failed/` and `storage/output/metrics.json`.
+- Schema-validation failures written to `storage/failed/` keep only the JSON path and error type, never the value.
+- The **backend persists aggregates only**. `mapPipelineRecord` drops `committee`, and the names are used in memory
+  for the OpenAlex lookup during the audit. Only counts (`committee_summary`, e.g. 7 of 9 sampled members matched) are
+  stored and returned by the API. No member name, affiliation or OpenAlex author URL reaches the DB or an API response.
+
 ## Output (per record)
 See `config/schema.json`. Key guarantees: `conference_id` = sha256(canonical_name + year + primary_source_url);
 `provenance.source_urls`, `scraped_at`, `extraction_method`, `confidence`; `raw_snapshot_ref` → gzipped HTML in

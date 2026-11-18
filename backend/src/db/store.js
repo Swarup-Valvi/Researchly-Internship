@@ -153,6 +153,8 @@ export const store = {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
+    // Privacy guard: committee member names/affiliations are audit-time only and must never be persisted.
+    delete newConf.committee;
 
     if (isSupabaseReady()) {
       try {

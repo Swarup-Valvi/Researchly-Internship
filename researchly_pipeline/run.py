@@ -28,7 +28,7 @@ from models import Conference
 from normalizer.records import normalize
 from observability import Metrics, get_logger, log
 from store import Store
-from validators.schema_validator import load_validator, validate_record
+from validators.schema_validator import load_validator, validate_record_redacted
 
 ROOT = Path(__file__).resolve().parent
 ORDER = ["ieee", "acm", "springer", "wikicfp", "individual"]  # individual last: seeded from discovered URLs
@@ -100,13 +100,15 @@ def run_pipeline(args: argparse.Namespace) -> dict:
         try:
             existing.append(Conference.model_validate(d))
         except Exception as exc:  # noqa: BLE001
-            log(logger, logging.WARNING, "existing record unreadable; dropped", error=str(exc)[:200])
+            # Pydantic's str(exc) quotes input values; log only where/what failed, never the values.
+            where = [{"loc": "/".join(map(str, e.get("loc", ()))), "type": e.get("type")} for e in getattr(exc, "errors", lambda: [])()][:5]
+            log(logger, logging.WARNING, "existing record unreadable; dropped", error_type=type(exc).__name__, errors=where)
     merged = deduplicate(existing + new)
 
     validator, final, invalid = load_validator(), [], 0
     for c in merged:
         rec = c.model_dump()
-        errs = validate_record(rec, validator)
+        errs = validate_record_redacted(rec, validator)   # path + error type only: no field VALUES reach storage/failed/
         if errs:
             invalid += 1
             store.dead_letter(c.provenance.primary_source, c.provenance.source_urls[0], "schema validation failed", extra={"errors": errs[:10]})

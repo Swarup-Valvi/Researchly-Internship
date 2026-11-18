@@ -54,3 +54,27 @@ def test_incremental_since_skips_recently_fetched(tmp_path):
     run.run_pipeline(args(tmp_path))
     s = run.run_pipeline(args(tmp_path, "--since", "2000-01-01"))   # everything fetched after cutoff? no: fetched_at >= since -> skipped
     assert s["metrics"]["wikicfp"]["pages_fetched"] == 0 and s["metrics"]["wikicfp"]["pages_unchanged"] >= 1
+
+
+def test_bad_committee_entry_never_appears_in_failed_record_json(tmp_path, caplog):
+    # A previously written output record whose committee entry violates the schema (contact data in the name,
+    # name over maxLength). Re-running re-validates it -> dead letter. Only path + error type may be written.
+    sample = json.loads((Path(run.__file__).parent / "storage/output/conferences.sample.json").read_text())[0]
+    leaky_name = "Leaky Person leak@example.org"
+    long_aff = "Secret Affiliation " + "x" * 300
+    sample["committee"] = [{"name": leaky_name, "affiliation": long_aff}]
+    out = tmp_path / "out" / "c.json"
+    out.parent.mkdir(parents=True)
+    out.write_text(json.dumps([sample]))
+    s = run.run_pipeline(args(tmp_path))
+    assert s["schema_invalid"] >= 1
+    failed = [json.loads(p.read_text()) for p in (tmp_path / "s" / "failed").glob("*.json")]
+    schema_fail = [f for f in failed if f["reason"] == "schema validation failed"]
+    assert schema_fail, "the bad record must be dead-lettered"
+    errs = [e for f in schema_fail for e in f["errors"]]
+    assert {"path": "committee/0/name", "error_type": "not"} in errs
+    assert {"path": "committee/0/affiliation", "error_type": "anyOf"} in errs
+    blob = " ".join(p.read_text() for p in (tmp_path / "s" / "failed").glob("*.json")) + caplog.text
+    for leaked in ("Leaky", "leak@example.org", "Secret Affiliation"):
+        assert leaked not in blob
+    assert leaky_name not in out.read_text()                     # and the invalid record is not written to output

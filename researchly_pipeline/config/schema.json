@@ -91,6 +91,14 @@
           }
         },
         "claim_snippets": {"type": "array", "maxItems": 8, "items": {"type": "string", "maxLength": 300}},
+        "committee": {
+          "type": "array", "maxItems": 300,
+          "items": {
+            "type": "object", "additionalProperties": false, "required": ["name", "affiliation"],
+            "properties": {"name": {"type": "string", "maxLength": 60, "not": {"pattern": "@"}},
+                           "affiliation": {"anyOf": [{"type": "null"}, {"type": "string", "maxLength": 200, "not": {"pattern": "@"}}]}}
+          }
+        },
         "provenance": {
           "type": "object", "additionalProperties": false,
           "required": ["primary_source", "source_urls", "scraped_at", "extraction_method", "confidence"],

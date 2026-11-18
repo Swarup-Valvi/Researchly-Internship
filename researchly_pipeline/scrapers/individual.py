@@ -7,6 +7,7 @@ from typing import Optional
 from bs4 import BeautifulSoup
 
 from extractors import llm_assist
+from extractors.committee import extract_committee
 from extractors.dates import extract_important_dates
 from extractors.jsonld import extract_events
 from models import RawRecord
@@ -143,6 +144,7 @@ class IndividualScraper(BaseScraper):
         rec.notification_text = dates["notification_date"]
         rec.camera_ready_text = dates["camera_ready"]
         rec.sponsors_text = rec.sponsors_text or sponsor_sentences(soup)
+        rec.committee = extract_committee(html)
         idx = matching(sents, _INDEX_RX)
         rec.indexing_text = " ".join(idx) or None  # raw claim sentences preserved verbatim
         fee = matching(sents, _FEE_RX, 1)

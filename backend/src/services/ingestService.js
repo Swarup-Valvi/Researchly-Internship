@@ -70,19 +70,29 @@ export function mapPipelineRecord(rec) {
     sponsors_claimed: rec.sponsors?.claimed || [],
     sponsors_verified_source: rec.sponsors?.verified_source || null,
     claim_snippets: rec.claim_snippets || [],
+    // NOTE: rec.committee is deliberately NOT mapped: member names never reach the store/DB/API.
+    // Use committeeForAudit(rec) to pass it transiently to the audit.
     pipeline_conference_id: rec.conference_id
   };
 }
 
-async function audit(conf, { live }) {
-  const lookups = live ? await gatherLookups(conf) : {};
+/** Committee names + stated affiliations for the audit only. Never stored, logged or returned by the API. */
+export function committeeForAudit(rec) {
+  return (rec?.committee || []).filter((m) => m && typeof m.name === 'string')
+    .map((m) => ({ name: m.name, affiliation: typeof m.affiliation === 'string' ? m.affiliation : null }));
+}
+
+export async function audit(conf, { live, committee, lookupOpts = {} }) {
+  const lookups = live ? await gatherLookups(conf, { ...lookupOpts, committee }) : {};
   const a = evaluateConferenceCredibility(conf, lookups);
   await store.saveCredibilityAudit(a);
-  await store.saveConference({ ...conf, credibility_score: a.overall_score, risk_level: a.risk_level });
+  // Persist only the aggregate committee summary (counts), so later re-audits can reuse it without names.
+  const committee_summary = lookups.committee ?? conf.committee_summary ?? null;
+  await store.saveConference({ ...conf, committee_summary, credibility_score: a.overall_score, risk_level: a.risk_level });
   return a;
 }
 
-export async function ingestRecords(records, { live = config.enableLiveChecks } = {}) {
+export async function ingestRecords(records, { live = config.enableLiveChecks, lookupOpts = {} } = {}) {
   if (!Array.isArray(records)) throw new Error('expected an array of conference records');
   if (records.length > MAX_RECORDS) throw new Error(`too many records (max ${MAX_RECORDS})`);
   const result = { received: records.length, created: 0, updated: 0, deadline_changes: 0, rejected: [] };
@@ -107,7 +117,7 @@ export async function ingestRecords(records, { live = config.enableLiveChecks } 
       result.deadline_changes++;
     }
     const saved = await store.saveConference({ ...(existing || {}), ...conf });
-    await audit(saved, { live });
+    await audit(saved, { live, committee: committeeForAudit(rec), lookupOpts });
     existing ? result.updated++ : result.created++;
   }
   return result;

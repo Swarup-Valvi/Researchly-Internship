@@ -72,6 +72,10 @@ def merge(group: list[Conference]) -> Conference:
         best = max((getattr(c.indexing_claims, k) for c in g), key=order.__getitem__)
         setattr(out.indexing_claims, k, best)
     out.claim_snippets = union(c.claim_snippets for c in g)[:8]
+    members = {}
+    for m in (m for c in g for m in c.committee):  # first listing of a name wins (group is in precedence order)
+        members.setdefault(m.name.lower(), m)
+    out.committee = list(members.values())
     out.fees = _first(c.fees for c in g if c.fees.amount is not None or c.fees.notes) or out.fees
     urls = union(c.provenance.source_urls for c in g)
     out.provenance.source_urls = urls
