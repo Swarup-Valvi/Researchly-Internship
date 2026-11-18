@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from models import Conference
 
-SOURCE_TRUST = {"ieee": 1.0, "acm": 1.0, "springer": 0.9, "individual": 0.7, "wikicfp": 0.4}
+SOURCE_TRUST = {"ieee": 1.0, "acm": 1.0, "springer": 0.9, "individual": 0.7, "ccfddl": 0.6, "wikicfp": 0.4}
 METHOD_WEIGHT = {"structured": 1.0, "heuristic": 0.7, "llm_assisted": 0.5}
 
 

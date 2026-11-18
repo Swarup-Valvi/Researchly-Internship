@@ -76,6 +76,16 @@ def merge(group: list[Conference]) -> Conference:
     for m in (m for c in g for m in c.committee):  # first listing of a name wins (group is in precedence order)
         members.setdefault(m.name.lower(), m)
     out.committee = list(members.values())
+    for f in ("dblp_key", "proceedings_series", "contact_email_domain", "enrichment"):
+        setattr(out, f, _first(getattr(c, f) for c in g))
+    out.provenance.dataset_version = _first(c.provenance.dataset_version for c in g)
+    seen_c, conflicts = set(), []
+    for x in (x for c in g for x in c.provenance.conflicts):
+        k = (x.field, repr(x.kept), repr(x.discarded))
+        if k not in seen_c:
+            seen_c.add(k)
+            conflicts.append(x)
+    out.provenance.conflicts = conflicts
     out.fees = _first(c.fees for c in g if c.fees.amount is not None or c.fees.notes) or out.fees
     urls = union(c.provenance.source_urls for c in g)
     out.provenance.source_urls = urls

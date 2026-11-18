@@ -1,16 +1,16 @@
 """Typed models: RawRecord (scraper output) and Conference (final schema)."""
 from __future__ import annotations
 
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-Source = Literal["ieee", "acm", "springer", "wikicfp", "individual"]
+Source = Literal["ieee", "acm", "springer", "wikicfp", "individual", "ccfddl"]
 Method = Literal["structured", "heuristic", "llm_assisted"]
 Claim = Literal["claimed", "verified", "unknown"]
 
 # Higher index = lower precedence. Used for merging authoritative fields.
-SOURCE_PRECEDENCE: list[str] = ["ieee", "acm", "springer", "individual", "wikicfp"]
+SOURCE_PRECEDENCE: list[str] = ["ieee", "acm", "springer", "individual", "ccfddl", "wikicfp"]
 
 
 class RawRecord(BaseModel):
@@ -38,6 +38,8 @@ class RawRecord(BaseModel):
     fees_text: Optional[str] = None
     claim_snippets: list[str] = Field(default_factory=list)  # raw sentences: indexing / fee / sponsor / red-flag wording
     committee: list[dict] = Field(default_factory=list)  # {"name", "affiliation"|None}; names only, no contact data
+    dblp_key: Optional[str] = None  # e.g. "aaai" (dblp.org/db/conf/aaai/), from a structured dataset only
+    dataset_version: Optional[str] = None  # e.g. the ccfddl git commit SHA the record was read from
     ranking: list[dict] = Field(default_factory=list)
     tracks: list[dict] = Field(default_factory=list)  # {"name": str, "deadline_text": str|None}
     is_virtual: Optional[bool] = None
@@ -100,12 +102,49 @@ class Fees(_Strict):
     notes: Optional[str] = None
 
 
+class Conflict(_Strict):
+    """Two sources disagreed on a field. The kept value is never silently overwritten."""
+    field: str
+    kept: Any
+    kept_source: str
+    discarded: Any
+    discarded_source: str
+    quote: Optional[str] = None
+    detected_at: str
+
+
 class Provenance(_Strict):
     primary_source: Source
     source_urls: list[str]
     scraped_at: str
     extraction_method: Method
     confidence: float
+    dataset_version: Optional[str] = None  # e.g. "ccfddl@<git sha>"
+    conflicts: list[Conflict] = Field(default_factory=list)
+
+
+class EnrichedField(_Strict):
+    """One LLM-extracted value that passed the verification gate (quote found verbatim in the fetched page)."""
+    field: str
+    value: Any
+    quote: str
+    source_url: str
+    extraction_method: Literal["llm_grounded"] = "llm_grounded"
+    model: str
+    extracted_at: str
+
+
+EnrichmentStatus = Literal["enriched", "no_verified_fields", "cached_unchanged", "skipped_robots", "skipped_fetch_error",
+                           "skipped_no_api_key", "skipped_not_reviewed", "llm_error"]
+
+
+class Enrichment(_Strict):
+    status: EnrichmentStatus
+    checked_at: str
+    content_hash: Optional[str] = None
+    model: Optional[str] = None
+    fields: list[EnrichedField] = Field(default_factory=list)
+    hallucination_rejected: int = 0
 
 
 class Dedup(_Strict):
@@ -131,6 +170,10 @@ class Conference(_Strict):
     fees: Fees = Field(default_factory=Fees)
     claim_snippets: list[str] = Field(default_factory=list)
     committee: list[CommitteeMember] = Field(default_factory=list)
+    dblp_key: Optional[str] = None
+    proceedings_series: Optional[str] = None        # grounded LLM enrichment only
+    contact_email_domain: Optional[str] = None      # domain only (never the address), grounded LLM enrichment only
+    enrichment: Optional[Enrichment] = None
     provenance: Provenance
     raw_snapshot_ref: Optional[str] = None
     dedup: Dedup

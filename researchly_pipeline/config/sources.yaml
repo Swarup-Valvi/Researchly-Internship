@@ -89,3 +89,13 @@ sources:
       location: ".hero-loc, .page__lead"
       dates: ".hero-date, .page__lead"
       important_dates_headings: ["important dates", "key dates", "deadlines", "dates"]
+
+  ccfddl:
+    enabled: true
+    tos_reviewed: false
+    trust: 0.6
+    access: "open dataset, MIT (github.com/ccfddl/ccf-deadlines, (c) 2021 CCFDDL); one shallow git clone per changed commit"
+    notes: "Community-maintained. Ranks are claims from the dataset, not verified against CORE/CCF. Attribution in NOTICE/THIRD_PARTY.md."
+    repo_url: "https://github.com/ccfddl/ccf-deadlines.git"
+    seed_urls: []
+

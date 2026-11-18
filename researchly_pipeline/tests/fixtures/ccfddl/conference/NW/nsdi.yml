@@ -1,0 +1,41 @@
+# Trimmed copy of ccfddl conference/NW/nsdi.yml at commit 1f3d38c742f0e8d3c8e13daf538ea0fbb29601d7 (editions >= 2026 kept; structure unchanged).
+# Source: https://github.com/ccfddl/ccf-deadlines  MIT License, Copyright (c) 2021 CCFDDL (see THIRD_PARTY.md).
+- title: NSDI
+  description: USENIX Symposium on Networked Systems Design and Implementation
+  sub: NW
+  rank:
+    ccf: A
+    core: N
+    thcpl: A
+  dblp: nsdi
+  confs:
+  - year: 2026
+    id: nsdi26
+    link: https://www.usenix.org/conference/nsdi26
+    timeline:
+    - abstract_deadline: '2025-04-18 23:59:59'
+      deadline: '2025-04-25 23:59:59'
+    - abstract_deadline: '2025-09-11 23:59:59'
+      deadline: '2025-09-18 23:59:59'
+    timezone: UTC-7
+    date: May 4-6, 2026
+    place: Renton, WA, USA
+  - year: 2027
+    id: nsdi27
+    link: https://www.usenix.org/conference/nsdi27
+    timeline:
+    - abstract_deadline: '2026-04-16 23:59:59'
+      deadline: '2026-04-23 23:59:59'
+    - abstract_deadline: '2026-09-10 23:59:59'
+      deadline: '2026-09-17 23:59:59'
+    timezone: UTC-4
+    date: May 11-13, 2027
+    place: Providence, RI, USA
+  - year: 2028
+    id: nsdi28
+    link: https://www.usenix.org/conferences/byname/178
+    timeline:
+    - deadline: TBD
+    timezone: UTC-7
+    date: May 9-11, 2028
+    place: Santa Clara, CA, USA

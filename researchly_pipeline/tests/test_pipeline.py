@@ -26,8 +26,11 @@ def test_rerun_is_idempotent_and_duplicates_are_merged(tmp_path):
     run.run_pipeline(args(tmp_path, "--full"))
     second = json.loads((tmp_path / "out" / "c.json").read_text())
     assert [r["conference_id"] for r in first] == [r["conference_id"] for r in second]
-    names = [r["canonical_name"] for r in second]
-    assert len(names) == len(set(names)) == 6                                 # 11 raw -> 6 distinct
+    keys = [(r["canonical_name"], r["year"]) for r in second]
+    assert len(keys) == len(set(keys))                                         # no duplicate conference-year
+    legacy = [r for r in second if r["provenance"]["primary_source"] != "ccfddl"]
+    assert len(legacy) == 6                                                    # 11 raw page records -> 6 distinct
+    assert len(second) - len(legacy) == 9                                      # + 9 ccfddl conference-years (fixture)
     icals = next(r for r in second if "Applied Learning" in r["canonical_name"])
     assert icals["dedup"]["canonical_source"] == "ieee" and len(icals["dedup"]["merged_from"]) == 3
 

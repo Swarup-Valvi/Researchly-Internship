@@ -1,0 +1,53 @@
+# Trimmed copy of ccfddl conference/AI/aaai.yml at commit 1f3d38c742f0e8d3c8e13daf538ea0fbb29601d7 (editions >= 2024 kept; structure unchanged).
+# Source: https://github.com/ccfddl/ccf-deadlines  MIT License, Copyright (c) 2021 CCFDDL (see THIRD_PARTY.md).
+- title: AAAI
+  description: AAAI Conference on Artificial Intelligence
+  sub: AI
+  rank:
+    ccf: A
+    core: A*
+    thcpl: A
+  dblp: aaai
+  confs:
+  - year: 2024
+    id: aaai24
+    link: https://aaai.org/conference/aaai/aaai-24/
+    timeline:
+    - abstract_deadline: '2023-08-08 23:59:59'
+      deadline: '2023-08-15 23:59:59'
+      comment: Regular round
+    - abstract_deadline: '2023-09-25 23:59:59'
+      deadline: '2023-09-25 23:59:59'
+      comment: NeurIPS fast track
+    timezone: UTC-12
+    date: February 22-25, 2024
+    place: Vancouver, British Columbia, Canada
+  - year: 2025
+    id: aaai25
+    link: https://aaai.org/conference/aaai/aaai-25/
+    timeline:
+    - abstract_deadline: '2024-08-07 23:59:59'
+      deadline: '2024-08-15 23:59:59'
+    timezone: UTC-12
+    date: February 27-March 2, 2025
+    place: PHILADELPHIA, PENNSYLVANIA, USA
+  - year: 2026
+    id: aaai26
+    link: https://aaai.org/conference/aaai/aaai-26/
+    timeline:
+    - abstract_deadline: '2025-07-25 23:59:59'
+      deadline: '2025-08-01 23:59:59'
+    timezone: UTC-12
+    date: January 22-25, 2026
+    place: Singapore EXPO
+  - year: 2027
+    id: aaai27
+    link: https://aaai.org/conference/aaai/aaai-27/
+    timeline:
+    - abstract_deadline: '2026-07-21 23:59:59'
+      deadline: '2026-07-28 23:59:59'
+      rebuttal_deadline: '2026-10-31 23:59:59'
+      decision_deadline: '2026-11-30 23:59:59'
+    timezone: UTC-12
+    date: February 16-23, 2027
+    place: Montréal, Québec, Canada

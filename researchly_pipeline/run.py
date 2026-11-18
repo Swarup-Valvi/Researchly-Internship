@@ -31,7 +31,7 @@ from store import Store
 from validators.schema_validator import load_validator, validate_record_redacted
 
 ROOT = Path(__file__).resolve().parent
-ORDER = ["ieee", "acm", "springer", "wikicfp", "individual"]  # individual last: seeded from discovered URLs
+ORDER = ["ieee", "acm", "springer", "ccfddl", "wikicfp", "individual"]  # individual last: seeded from discovered URLs
 KNOWN_HOSTS = ("wikicfp.com", "ieee.org", "acm.org", "springer.com")
 
 
@@ -75,6 +75,11 @@ def run_pipeline(args: argparse.Namespace) -> dict:
             continue
         fetcher = FixtureFetcher(args.fixtures, logger) if args.fixtures else Fetcher(scfg, logger)
         opts = {"details": args.details}
+        if name == "ccfddl":
+            # Local checkout (tests, or reuse of an existing clone); in fixture mode use the bundled YAML fixture.
+            path = args.ccfddl_path or (str(Path(args.fixtures) / "ccfddl") if args.fixtures else None)
+            if path:
+                opts["ccfddl_path"] = path
         if name == "individual":
             opts["urls"] = list(dict.fromkeys(scfg.get("seed_urls", []) + (args.urls or []) + discovered))[: args.limit or 25]
         cls = scrapers.SCRAPERS[name]
@@ -137,6 +142,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--allow-unreviewed", action="store_true", help="override the tos_reviewed guard (you take responsibility)")
     p.add_argument("--details", action="store_true", help="wikicfp: fetch each event page for external link + categories")
     p.add_argument("--urls", nargs="*", help="extra seed URLs for the 'individual' source")
+    p.add_argument("--ccfddl-path", help="ccfddl: read this local checkout instead of cloning")
     p.add_argument("--llm", action="store_true", help="enable grounded LLM-assisted extraction (needs GEMINI_API_KEY)")
     p.add_argument("--config", default=str(ROOT / "config" / "sources.yaml"))
     p.add_argument("--output", default=str(ROOT / "storage" / "output" / "conferences.json"))

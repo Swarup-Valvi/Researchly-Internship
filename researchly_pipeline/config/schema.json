@@ -12,7 +12,7 @@
     },
     "stringOrNull": {"type": ["string", "null"]},
     "claim": {"enum": ["claimed", "verified", "unknown"]},
-    "source": {"enum": ["ieee", "acm", "springer", "wikicfp", "individual"]},
+    "source": {"enum": ["ieee", "acm", "springer", "wikicfp", "individual", "ccfddl"]},
     "conference": {
       "type": "object",
       "additionalProperties": false,
@@ -107,10 +107,45 @@
             "source_urls": {"type": "array", "minItems": 1, "items": {"type": "string"}},
             "scraped_at": {"type": "string"},
             "extraction_method": {"enum": ["structured", "heuristic", "llm_assisted"]},
-            "confidence": {"type": "number", "minimum": 0, "maximum": 1}
+            "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+            "dataset_version": {"$ref": "#/$defs/stringOrNull"},
+            "conflicts": {
+              "type": "array",
+              "items": {
+                "type": "object", "additionalProperties": false,
+                "required": ["field", "kept", "kept_source", "discarded", "discarded_source", "detected_at"],
+                "properties": {"field": {"type": "string"}, "kept": {}, "kept_source": {"type": "string"}, "discarded": {},
+                               "discarded_source": {"type": "string"}, "quote": {"$ref": "#/$defs/stringOrNull"},
+                               "detected_at": {"type": "string"}}
+              }
+            }
           }
         },
         "raw_snapshot_ref": {"$ref": "#/$defs/stringOrNull"},
+        "dblp_key": {"anyOf": [{"type": "null"}, {"type": "string", "pattern": "^[A-Za-z0-9_-]{1,40}$"}]},
+        "proceedings_series": {"$ref": "#/$defs/stringOrNull"},
+        "contact_email_domain": {"anyOf": [{"type": "null"}, {"type": "string", "pattern": "^[a-z0-9.-]+\\.[a-z]{2,}$"}]},
+        "enrichment": {
+          "anyOf": [{"type": "null"}, {
+            "type": "object", "additionalProperties": false,
+            "required": ["status", "checked_at", "content_hash", "model", "fields", "hallucination_rejected"],
+            "properties": {
+              "status": {"enum": ["enriched", "no_verified_fields", "cached_unchanged", "skipped_robots", "skipped_fetch_error",
+                                  "skipped_no_api_key", "skipped_not_reviewed", "llm_error"]},
+              "checked_at": {"type": "string"},
+              "content_hash": {"$ref": "#/$defs/stringOrNull"},
+              "model": {"$ref": "#/$defs/stringOrNull"},
+              "hallucination_rejected": {"type": "integer", "minimum": 0},
+              "fields": {"type": "array", "items": {
+                "type": "object", "additionalProperties": false,
+                "required": ["field", "value", "quote", "source_url", "extraction_method", "model", "extracted_at"],
+                "properties": {"field": {"type": "string"}, "value": {}, "quote": {"type": "string", "maxLength": 400, "not": {"pattern": "[A-Za-z0-9._%+-]+@"}},
+                               "source_url": {"type": "string"}, "extraction_method": {"const": "llm_grounded"},
+                               "model": {"type": "string"}, "extracted_at": {"type": "string"}}
+              }}
+            }
+          }]
+        },
         "dedup": {
           "type": "object", "additionalProperties": false,
           "required": ["merged_from", "canonical_source"],

@@ -1,0 +1,48 @@
+# Trimmed copy of ccfddl conference/DB/icde.yml at commit 1f3d38c742f0e8d3c8e13daf538ea0fbb29601d7 (editions >= 2025 kept; structure unchanged).
+# Source: https://github.com/ccfddl/ccf-deadlines  MIT License, Copyright (c) 2021 CCFDDL (see THIRD_PARTY.md).
+- title: ICDE
+  description: IEEE International Conference on Data Engineering
+  sub: DB
+  rank:
+    ccf: A
+    core: A*
+    thcpl: A
+  dblp: icde
+  confs:
+  - year: 2025
+    id: icde25
+    link: https://ieee-icde.org/2025/
+    timeline:
+    - deadline: '2024-08-02 23:59:59'
+      comment: first round
+    - deadline: '2024-11-25 23:59:59'
+      comment: second round
+    timezone: AoE
+    date: May 20-23, 2025
+    place: Hong Kong, China
+  - year: 2026
+    id: icde26
+    link: https://icde2026.github.io/
+    timeline:
+    - deadline: '2025-06-18 17:00:00'
+      comment: first round
+    - deadline: '2025-10-27 17:00:00'
+      comment: second round
+    timezone: UTC-7
+    date: May 5-8, 2026
+    place: Montréal, Canada
+  - year: 2027
+    id: icde27
+    link: https://icde2027.github.io/
+    timeline:
+    - deadline: '2026-06-11 17:00:00'
+      rebuttal_deadline: '2026-08-15 17:00:00'
+      decision_deadline: '2026-09-10 17:00:00'
+      comment: first round; notification date is approximate
+    - deadline: '2026-11-11 17:00:00'
+      rebuttal_deadline: '2027-01-15 17:00:00'
+      decision_deadline: '2027-02-10 17:00:00'
+      comment: second round; notification date is approximate
+    timezone: PT
+    date: May 17-21, 2027
+    place: Copenhagen, Denmark
