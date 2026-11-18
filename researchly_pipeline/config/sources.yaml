@@ -5,7 +5,7 @@
 # validate them against saved real pages (storage/raw/) and patch here, not in code.
 
 defaults:
-  user_agent: "ResearchlyBot/0.1 (+https://researchly-5mq7.onrender.com; contact: CHANGE-ME@example.com)"
+  user_agent: "ResearchlyBot/0.1 (+https://researchly-5mq7.onrender.com; contact: swarupv.dev@gmail.com)"
   respect_robots: true
   timeout_seconds: 20
   max_retries: 3
@@ -82,5 +82,10 @@ sources:
     access: "seed URLs discovered from other sources; JSON-LD first, heuristics second"
     seed_urls: []
     selectors:
-      name: "h1, title"
+      name: "h1, title"     # code: first NON-EMPTY h1, then <title>, then og:title
+      # Hero/lead blocks, checked on real pages 2026-11-18:
+      #   .hero-loc/.hero-date = neurips.cc/icml.cc platform; .page__lead = Jekyll "Minimal Mistakes" (2026.aclweb.org).
+      # The first non-date line of a match is the location, the first date-looking line is the conference dates.
+      location: ".hero-loc, .page__lead"
+      dates: ".hero-date, .page__lead"
       important_dates_headings: ["important dates", "key dates", "deadlines", "dates"]

@@ -76,6 +76,12 @@ class Fetcher:
             log(self.logger, logging.WARNING, "robots.txt unreachable; treating as disallow", url=base, error=str(exc))
             rp.disallow_all = True
         self.robots[base] = rp
+        # Honour a robots.txt Crawl-delay for our agent: it can only slow us down, never speed up the bucket.
+        delay = rp.crawl_delay(self.cfg["user_agent"]) if not rp.disallow_all else None
+        if delay:
+            b = self.buckets.get(p.netloc)
+            if b is not None:
+                b.interval = max(b.interval, float(delay))
         return rp
 
     def allowed(self, url: str) -> bool:

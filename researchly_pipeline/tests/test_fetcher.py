@@ -77,3 +77,19 @@ def test_token_bucket_spaces_requests_per_domain():
     b = TokenBucket(6, lambda: t["now"], sleep)  # 1 request / 10 s
     b.acquire(); b.acquire(); b.acquire()
     assert sleeps == [10.0, 10.0]
+
+
+def test_robots_crawl_delay_slows_bucket_but_never_speeds_it_up():
+    def h(req):
+        if req.url.path == "/robots.txt":
+            return httpx.Response(200, text="User-agent: TestBot\nCrawl-delay: 15\n")
+        return httpx.Response(200, text="ok")
+    f, _ = make(h, {**CFG, "requests_per_minute": 6})       # bucket default: 10 s
+    assert f.get("https://a.test/x").ok and f.buckets["a.test"].interval == 15.0
+
+    def fast(req):
+        if req.url.path == "/robots.txt":
+            return httpx.Response(200, text="User-agent: *\nCrawl-delay: 1\n")
+        return httpx.Response(200, text="ok")
+    f, _ = make(fast, {**CFG, "requests_per_minute": 6})
+    assert f.get("https://b.test/x").ok and f.buckets["b.test"].interval == 10.0
