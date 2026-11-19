@@ -1,41 +1,8 @@
 import express from 'express';
 import { store } from '../db/store.js';
-import { getSupabase, isSupabaseReady } from '../db/supabase.js';
+import { getCurrentUserContext } from '../services/userContext.js';
 
 const router = express.Router();
-
-// Helper to extract caller user context
-async function getCurrentUserContext(req) {
-  const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    const token = authHeader.split(' ')[1];
-    if (isSupabaseReady()) {
-      try {
-        const supabase = getSupabase();
-        const { data: { user }, error } = await supabase.auth.getUser(token);
-        if (!error && user) {
-          const { data: profile } = await supabase.from('profiles').select('id, interests').eq('id', user.id).maybeSingle();
-          return {
-            id: user.id,
-            interests: profile?.interests || []
-          };
-        }
-      } catch (e) {
-        console.warn('[Network] User context error:', e.message);
-      }
-    }
-
-    // Local profile fallback
-    const localUser = store.getLocalProfile(token);
-    if (localUser) {
-      return {
-        id: localUser.id,
-        interests: localUser.interests || []
-      };
-    }
-  }
-  return { id: null, interests: [] };
-}
 
 // GET all researchers & interest-based recommendations
 router.get('/colleagues', async (req, res) => {

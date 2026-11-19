@@ -34,7 +34,9 @@ import {
   Video,
   Search,
   Check,
-  Compass
+  Compass,
+  Globe2,
+  UserCheck
 } from 'lucide-react';
 import { daysLeft, deadlineLabel, deadlineMoment } from '../lib/deadline';
 
@@ -52,12 +54,18 @@ export default function HomePage() {
   const [commentText, setCommentText] = useState('');
   const [postCommentsMap, setPostCommentsMap] = useState({});
   const [shareSuccessId, setShareSuccessId] = useState(null);
+  // Feed scope like LinkedIn: everything you may see, or only people you're connected with. Persisted per browser.
+  const [feedScope, setFeedScope] = useState(() => {
+    try { return localStorage.getItem('researchly_feed_scope') === 'connections' ? 'connections' : 'all'; } catch { return 'all'; }
+  });
+  const [postVisibility, setPostVisibility] = useState('public');
+  const [feedLoading, setFeedLoading] = useState(false);
 
   useEffect(() => {
     async function loadFeed() {
       try {
         const [postsRes, confsRes, appsRes, commsRes] = await Promise.all([
-          api.getPosts().catch(() => ({ success: false, data: [] })),
+          api.getPosts(feedScope).catch(() => ({ success: false, data: [] })),
           api.getConferences().catch(() => ({ success: false, data: [] })),
           api.getApplications().catch(() => ({ success: false, data: [] })),
           api.getCommunities().catch(() => ({ success: false, data: [] }))
@@ -72,7 +80,20 @@ export default function HomePage() {
       }
     }
     loadFeed();
-  }, [user]);
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const switchFeedScope = async (scope) => {
+    if (scope === feedScope) return;
+    setFeedScope(scope);
+    try { localStorage.setItem('researchly_feed_scope', scope); } catch { /* storage unavailable */ }
+    setFeedLoading(true);
+    try {
+      const res = await api.getPosts(scope);
+      if (res?.success && Array.isArray(res.data)) setPosts(res.data);
+    } catch { /* keep current list */ } finally {
+      setFeedLoading(false);
+    }
+  };
 
   const handleCreatePost = async (e) => {
     e.preventDefault();
@@ -89,7 +110,8 @@ export default function HomePage() {
         author_name: user?.full_name || 'Academic Researcher',
         author_institution: user?.institution || 'Research Institute',
         author_role: user?.role || 'Researcher',
-        author_avatar: user?.avatar_url
+        author_avatar: user?.avatar_url,
+        visibility: postVisibility
       });
       if (res?.success && res.data) {
         setPosts([res.data, ...posts]);
@@ -553,6 +575,17 @@ export default function HomePage() {
                     <span>AI Post Assist</span>
                   </button>
 
+                  <div className="ml-auto flex items-center gap-2">
+                  <label htmlFor="post-visibility" className="sr-only">Who can see this post</label>
+                  <select
+                    id="post-visibility"
+                    value={postVisibility}
+                    onChange={(e) => setPostVisibility(e.target.value)}
+                    className="text-sm border border-slate-200 rounded-xl px-2.5 py-2 bg-surface text-slate-700 focus:border-blue-500 focus:outline-none cursor-pointer"
+                  >
+                    <option value="public">Anyone</option>
+                    <option value="connections">Connections only</option>
+                  </select>
                   <button
                     type="button"
                     onClick={handleCreatePost}
@@ -562,13 +595,36 @@ export default function HomePage() {
                     <Send className="w-4 h-4" />
                     <span>Publish Post</span>
                   </button>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Social Network Feed Posts (Visible to everyone when connections post) */}
-          {loading ? (
+          {/* Feed scope tabs */}
+          <div role="tablist" aria-label="Feed" className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl w-fit">
+            {[
+              { id: 'all', label: 'All posts', Icon: Globe2 },
+              { id: 'connections', label: 'My connections', Icon: UserCheck }
+            ].map(({ id, label, Icon }) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={feedScope === id}
+                onClick={() => switchFeedScope(id)}
+                className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-semibold transition cursor-pointer ${
+                  feedScope === id ? 'bg-surface text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <Icon aria-hidden="true" className="w-4 h-4" />
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {/* Social Network Feed Posts */}
+          {loading || feedLoading ? (
             <div className="space-y-4">
               {[1, 2].map((n) => (
                 <div key={n} className="bg-surface rounded-2xl border border-slate-200 p-6 animate-pulse space-y-3">
@@ -588,10 +644,19 @@ export default function HomePage() {
               <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
                 <MessageSquare className="w-7 h-7" />
               </div>
-              <h3 className="font-bold text-base text-slate-900">Academic Feed is Ready</h3>
+              <h3 className="font-bold text-base text-slate-900">
+                {feedScope === 'connections' ? 'No posts from your connections yet' : 'Academic Feed is Ready'}
+              </h3>
               <p className="text-sm text-slate-500 max-w-sm mx-auto leading-relaxed">
-                When you and your connected colleagues publish preprint announcements, CFP discussions, or queries, they will appear here in real time for everyone to see.
+                {feedScope === 'connections'
+                  ? 'Posts by colleagues you are connected with will appear here. Grow your network to fill this feed.'
+                  : 'When you and your colleagues publish preprint announcements, CFP discussions, or queries, they will appear here.'}
               </p>
+              {feedScope === 'connections' && (
+                <Link to="/network" className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-700">
+                  Find colleagues <ArrowRight aria-hidden="true" className="w-4 h-4" />
+                </Link>
+              )}
             </div>
           ) : (
             posts.map((post) => (
@@ -622,6 +687,15 @@ export default function HomePage() {
                           hour: '2-digit',
                           minute: '2-digit'
                         })}
+                        {post.visibility === 'connections' ? (
+                          <span className="inline-flex items-center gap-1 ml-2" title="Visible to connections only">
+                            · <UserCheck aria-hidden="true" className="w-3 h-3" /> Connections
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 ml-2" title="Visible to anyone">
+                            · <Globe2 aria-hidden="true" className="w-3 h-3" /> Public
+                          </span>
+                        )}
                       </span>
                     </div>
                   </div>

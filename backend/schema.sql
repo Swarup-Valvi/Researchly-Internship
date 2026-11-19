@@ -28,6 +28,8 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     open_to_collaborations BOOLEAN DEFAULT true,
     open_to_peer_review BOOLEAN DEFAULT true,
     is_onboarded BOOLEAN DEFAULT false,
+    newsletter_opt_in BOOLEAN NOT NULL DEFAULT false,      -- migrations/007 (weekly digest, opt-in)
+    newsletter_last_sent_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
@@ -156,6 +158,7 @@ CREATE TABLE IF NOT EXISTS public.posts (
     comments_count INTEGER DEFAULT 0,
     shares_count INTEGER DEFAULT 0,
     media_url TEXT,
+    visibility TEXT NOT NULL DEFAULT 'public' CHECK (visibility IN ('public', 'connections')),  -- migrations/007
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -223,6 +226,7 @@ CREATE TABLE IF NOT EXISTS public.colleague_connections (
     status TEXT DEFAULT 'pending', -- 'pending', 'connected', 'rejected'
     request_message TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
     UNIQUE(user_id, target_user_id)
 );
 

@@ -87,8 +87,27 @@ export const api = {
   },
 
   // --- Social Feed ---
-  async getPosts() {
-    const res = await fetch(`${API_BASE}/posts`);
+  // scope: 'all' (public + your connections) | 'connections' (only people you're connected with)
+  async getPosts(scope = 'all') {
+    const res = await fetch(`${API_BASE}/posts?scope=${encodeURIComponent(scope)}`, { headers: getAuthHeaders() });
+    return res.json();
+  },
+
+  // --- Weekly newsletter ---
+  async getNewsletterSubscription() {
+    const res = await fetch(`${API_BASE}/newsletter/subscription`, { headers: getAuthHeaders() });
+    return res.json();
+  },
+
+  async setNewsletterSubscription(optIn) {
+    const res = await fetch(`${API_BASE}/newsletter/subscription`, {
+      method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify({ opt_in: optIn })
+    });
+    return res.json();
+  },
+
+  async getNewsletterPreview() {
+    const res = await fetch(`${API_BASE}/newsletter/preview`, { headers: getAuthHeaders() });
     return res.json();
   },
 

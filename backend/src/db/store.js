@@ -9,6 +9,9 @@ function logSupabaseError(table, op, error) {
 import { REAL_ACADEMIC_EVENTS } from './realEvents.js';
 import { evaluateConferenceCredibility } from '../services/credibilityEngine.js';
 import { config } from '../config/env.js';
+import { filterFeed, normalizeVisibility } from '../services/feed.js';
+
+const UUID_RX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 import {
   initialConferences,
   initialDeadlineHistory,
@@ -297,28 +300,63 @@ export const store = {
   },
 
   // --- Posts & Feed ---
-  async getPosts() {
+  async getPosts({ viewerId = null, scope = 'all' } = {}) {
+    let all = null;
     if (isSupabaseReady()) {
       try {
         const supabase = getSupabase();
         const { data, error } = await supabase
           .from('posts')
           .select('*')
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: false })
+          .limit(500);
         if (error) logSupabaseError('posts', 'select', error);
-        if (!error && data && data.length > 0) return data;
+        if (!error && data && data.length > 0) {
+          // keep locally created posts that never reached Supabase
+          const ids = new Set(data.map(p => p.id));
+          all = [...data, ...posts.filter(p => !ids.has(p.id))]
+            .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+        }
       } catch (err) {
         logSupabaseError('posts', 'getPosts', err);
       }
     }
+    if (!all) all = [...posts];
+    const connectedIds = viewerId ? await this.getConnectedIds(viewerId) : new Set();
+    return filterFeed(all, { viewerId, connectedIds, scope });
+  },
 
-    return [...posts];
+  /** Ids of everyone with an accepted connection to userId (either direction). */
+  async getConnectedIds(userId) {
+    const ids = new Set();
+    if (!userId) return ids;
+    const add = (c) => {
+      if (c.status !== 'connected') return;
+      if (c.user_id === userId) ids.add(c.target_user_id);
+      else if (c.target_user_id === userId) ids.add(c.user_id);
+    };
+    connections.forEach(add);
+    if (isSupabaseReady() && UUID_RX.test(userId)) {
+      try {
+        const { data, error } = await getSupabase()
+          .from('colleague_connections')
+          .select('user_id, target_user_id, status')
+          .eq('status', 'connected')
+          .or(`user_id.eq.${userId},target_user_id.eq.${userId}`);
+        if (error) logSupabaseError('colleague_connections', 'select', error);
+        (data || []).forEach(add);
+      } catch (err) {
+        logSupabaseError('colleague_connections', 'getConnectedIds', err);
+      }
+    }
+    return ids;
   },
 
   async createPost(postData) {
     const newPost = {
-      id: postData.id || `post-${crypto.randomUUID()}`,
-      user_id: postData.user_id || 'usr-current',
+      id: crypto.randomUUID(),                       // posts.id is a UUID column
+      user_id: postData.user_id || null,             // FK to auth.users; never a placeholder string
+      visibility: normalizeVisibility(postData.visibility),
       author_name: postData.author_name || 'Academic Researcher',
       author_role: postData.author_role || 'Researcher',
       author_institution: postData.author_institution || 'University',
@@ -335,7 +373,9 @@ export const store = {
     if (isSupabaseReady()) {
       try {
         const supabase = getSupabase();
-        const { error } = await supabase.from('posts').insert(newPost);
+        // a local-profile user id is not an auth.users id: store it locally only
+        const row = UUID_RX.test(newPost.user_id || '') ? newPost : { ...newPost, user_id: null };
+        const { error } = await supabase.from('posts').insert(row);
         if (error) logSupabaseError('posts', 'insert', error);
       } catch (err) {
         logSupabaseError('posts', 'createPost', err);
@@ -347,7 +387,11 @@ export const store = {
   },
 
   async toggleLike(postId, userId = 'usr-current') {
-    const post = posts.find(p => p.id === postId);
+    let post = posts.find(p => p.id === postId);
+    if (!post && isSupabaseReady() && UUID_RX.test(postId)) {
+      const { data } = await getSupabase().from('posts').select('*').eq('id', postId).maybeSingle();
+      if (data) { post = { ...data, likes_count: data.likes_count || 0 }; posts.push(post); }
+    }
     if (!post) return { error: 'Post not found' };
 
     const key = `${postId}_${userId}`;

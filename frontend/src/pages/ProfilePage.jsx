@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import NewsletterCard from '../components/NewsletterCard';
 import {
   User, Building, Briefcase, Edit3, Save, X, Plus,
   BookOpen, Award, Link as LinkIcon, ExternalLink,
@@ -656,6 +657,8 @@ export default function ProfilePage() {
               </div>
             )}
           </div>
+
+          <NewsletterCard />
         </div>
       </div>
     </div>

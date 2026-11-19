@@ -1,0 +1,27 @@
+name: weekly-newsletter
+# Mondays 08:00 UTC. The backend builds one digest per opted-in profile and sends it via Resend.
+# Without RESEND_API_KEY / NEWSLETTER_FROM on the backend the endpoint does a dry run (nothing is sent).
+on:
+  schedule:
+    - cron: '0 8 * * 1'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Build digests without sending'
+        type: boolean
+        default: true
+permissions:
+  contents: read
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger digest send
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+          INGEST_TOKEN: ${{ secrets.INGEST_TOKEN }}
+          DRY: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && '1' || '0' }}
+        run: |
+          test -n "$BACKEND_URL" && test -n "$INGEST_TOKEN" || { echo "BACKEND_URL / INGEST_TOKEN secrets missing"; exit 1; }
+          curl -fsS --retry 3 --retry-delay 20 --max-time 300 -X POST "$BACKEND_URL/api/newsletter/send?dry_run=$DRY" \
+            -H "x-ingest-token: $INGEST_TOKEN"

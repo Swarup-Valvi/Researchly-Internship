@@ -13,6 +13,7 @@ import matcherRoutes from './routes/matcherRoutes.js';
 import applicationRoutes from './routes/applicationRoutes.js';
 import paperReviewRoutes from './routes/paperReviewRoutes.js';
 import networkRoutes from './routes/networkRoutes.js';
+import newsletterRoutes from './routes/newsletterRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 
 const app = express();
@@ -53,6 +54,7 @@ app.use('/api/ai-match', matcherRoutes);
 app.use('/api/applications', applicationRoutes);
 app.use('/api/paper-reviews', paperReviewRoutes);
 app.use('/api/network', networkRoutes);
+app.use('/api/newsletter', newsletterRoutes);
 
 // Global Error Handler
 app.use((err, req, res, next) => {
