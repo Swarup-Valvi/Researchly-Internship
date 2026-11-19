@@ -16,5 +16,9 @@ export const config = {
   openAlexMailto: (process.env.OPENALEX_MAILTO || '').trim(),
   enableLiveChecks: (process.env.ENABLE_LIVE_CHECKS || '').trim().toLowerCase() === 'true',
   enableCuratedSeed: (process.env.ENABLE_CURATED_SEED || 'true').trim().toLowerCase() !== 'false',
+  // Weekly newsletter (optional). Without RESEND_API_KEY the send endpoint only does a dry run.
+  resendApiKey: (process.env.RESEND_API_KEY || '').trim(),
+  newsletterFrom: (process.env.NEWSLETTER_FROM || '').trim(),      // e.g. "Researchly <digest@your-domain>"
+  siteUrl: (process.env.SITE_URL || '').trim().replace(/\/+$/, ''), // public frontend URL, used for links in emails
   nodeEnv: (process.env.NODE_ENV || 'development').trim()
 };

@@ -9,6 +9,7 @@ import { deadlineLabel } from '../lib/deadline';
 import { eventDatesLabel } from '../lib/discover';
 import { coverageSummary, MIN_COVERAGE, DIMENSIONS } from '../lib/coverage';
 import RiskBadge from '../components/RiskBadge';
+import ReminderBell from '../components/ReminderBell';
 
 const STATUS = {
   pass: { label: 'Pass', Icon: CheckCircle2, dot: 'bg-risk-low-soft text-risk-low border-risk-low-line', text: 'text-risk-low' },
@@ -164,6 +165,7 @@ export default function ConferenceDetailPage() {
             <Link to={`/ai-match?target=${encodeURIComponent(conference.name)}`} className="btn-secondary">
               <Sparkles aria-hidden="true" className="w-4 h-4" /> Match my paper
             </Link>
+            <ReminderBell conference={conference} variant="button" />
           </div>
           {conference.topics?.length > 0 && (
             <ul className="flex flex-wrap gap-1.5" aria-label="Topics">

@@ -19,6 +19,12 @@ services:
         sync: false
       - key: INGEST_TOKEN          # shared secret for POST /api/conferences/ingest (GitHub Action)
         generateValue: true
+      - key: RESEND_API_KEY        # weekly digest email (optional; without it the send is a dry run)
+        sync: false
+      - key: NEWSLETTER_FROM       # e.g. "Researchly <digest@your-verified-domain>"
+        sync: false
+      - key: SITE_URL              # public frontend URL (Vercel), used for links in emails
+        sync: false
       - key: ENABLE_LIVE_CHECKS    # true = DBLP + RDAP lookups during audits
         value: "false"
       - key: ENABLE_CURATED_SEED   # false hides the unverified hand-entered seed list

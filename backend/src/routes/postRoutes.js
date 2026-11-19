@@ -1,15 +1,21 @@
 import express from 'express';
 import { store } from '../db/store.js';
 import { draftSocialPost } from '../services/llmService.js';
+import { getCurrentUserContext } from '../services/userContext.js';
 
 const router = express.Router();
 
 // GET social feed
 router.get('/', async (req, res) => {
   try {
-    const posts = await store.getPosts();
+    // ?scope=all (public + your connections' posts) | connections (only people you're connected with)
+    const scope = req.query.scope === 'connections' ? 'connections' : 'all';
+    const viewer = await getCurrentUserContext(req);
+    const posts = await store.getPosts({ viewerId: viewer.id, scope });
     res.json({
       success: true,
+      scope,
+      signed_in: !!viewer.id,
       count: posts.length,
       data: posts
     });
@@ -21,12 +27,18 @@ router.get('/', async (req, res) => {
 // POST create new post
 router.post('/', async (req, res) => {
   try {
-    const { content, tags, author_name, author_institution, author_role, author_avatar, media_url } = req.body;
+    const { content, tags, author_name, author_institution, author_role, author_avatar, media_url, visibility } = req.body;
+    const author = await getCurrentUserContext(req);
+    if (!author.id) {
+      return res.status(401).json({ success: false, error: 'Sign in to post.' });
+    }
     if (!content || !content.trim()) {
       return res.status(400).json({ success: false, error: 'Post content cannot be empty' });
     }
 
     const created = await store.createPost({
+      user_id: author.id,
+      visibility,
       content,
       tags: tags || [],
       author_name,

@@ -134,7 +134,7 @@ export default function AuthModal() {
                 ) : (
                   <GitHubIcon className="w-4 h-4 text-slate-800" />
                 )}
-                Continue with GitHub
+                {mode === 'login' ? 'Continue with GitHub' : 'Sign up with GitHub'}
               </button>
 
               <button
@@ -148,7 +148,7 @@ export default function AuthModal() {
                 ) : (
                   <GoogleIcon className="w-4 h-4" />
                 )}
-                Continue with Google
+                {mode === 'login' ? 'Continue with Google' : 'Sign up with Google'}
               </button>
 
               <div className="flex items-center gap-3">

@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { daysLeft, deadlineLabel } from '../lib/deadline';
 import { eventDatesLabel } from '../lib/discover';
+import ReminderBell from './ReminderBell';
 import { CalendarDays, MapPin, Clock, Sparkles, ExternalLink, BookmarkPlus, Layers } from 'lucide-react';
 import RiskBadge from './RiskBadge';
 
@@ -82,6 +83,7 @@ export default function ConferenceCard({ conference, onTrack }) {
         <RiskBadge risk={conference.risk_level} score={conference.credibility_score} />
         {/* relative z-10: actions sit above the stretched card link */}
         <div className="relative z-10 ml-auto flex items-center gap-1">
+          <ReminderBell conference={conference} />
           <Link
             to={`/ai-match?target=${encodeURIComponent(conference.name)}`}
             className="p-2 rounded-lg text-ink-muted hover:text-ink hover:bg-surface-sunken transition-colors duration-150"
