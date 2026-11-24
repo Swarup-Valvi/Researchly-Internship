@@ -80,7 +80,7 @@ jobs:
           if [ ! -s "$OUT" ] || [ "$(python -c 'import json,sys;print(len(json.load(open(sys.argv[1]))))' "$OUT")" = "0" ]; then
             echo "No records (source not reviewed?). Nothing to ingest."; exit 0
           fi
-          curl -fsS --retry 3 --retry-delay 20 --max-time 300 -X POST "$BACKEND_URL/api/conferences/ingest" \
+          curl -fsS --retry 2 --retry-delay 30 --retry-connrefused --max-time 900 -X POST "$BACKEND_URL/api/conferences/ingest" \
             -H "content-type: application/json" -H "x-ingest-token: $INGEST_TOKEN" --data-binary @"$OUT"
       - uses: actions/upload-artifact@v4
         if: always()
