@@ -48,7 +48,15 @@ def test_dry_run_writes_nothing(tmp_path):
 
 
 def test_live_run_refuses_unreviewed_sources(tmp_path):
-    a = run.build_parser().parse_args(["--source", "wikicfp", "--storage", str(tmp_path / "s"), "--output", str(tmp_path / "c.json"), "--dry-run"])
+    # Use a copy of the config with wikicfp marked unreviewed, so the guard is tested whatever the real file says
+    # (and the test never makes a live request).
+    import yaml
+    cfg = yaml.safe_load((run.ROOT / "config" / "sources.yaml").read_text())
+    cfg["sources"]["wikicfp"]["tos_reviewed"] = False
+    conf = tmp_path / "sources.yaml"
+    conf.write_text(yaml.safe_dump(cfg))
+    a = run.build_parser().parse_args(["--source", "wikicfp", "--config", str(conf), "--storage", str(tmp_path / "s"),
+                                       "--output", str(tmp_path / "c.json"), "--dry-run"])
     s = run.run_pipeline(a)
     assert "wikicfp" in s["sources_skipped"] and s["sources_run"] == []
 
