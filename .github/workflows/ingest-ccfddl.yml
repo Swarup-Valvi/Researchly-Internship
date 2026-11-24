@@ -72,8 +72,7 @@ jobs:
           if [ ! -s "$OUT" ] || [ "$(python -c 'import json,sys;print(len(json.load(open(sys.argv[1]))))' "$OUT")" = "0" ]; then
             echo "Nothing new (dataset unchanged or source not reviewed). Nothing to ingest."; exit 0
           fi
-          curl -fsS --retry 2 --retry-delay 30 --retry-connrefused --max-time 900 -X POST "$BACKEND_URL/api/conferences/ingest" \
-            -H "content-type: application/json" -H "x-ingest-token: $INGEST_TOKEN" --data-binary @"$OUT"
+          bash .github/scripts/push_ingest.sh "$OUT"   # queues the batch (202) and waits for the backend to finish
       # Only dead-letter notes and run metrics are uploaded. storage/output/ is NOT uploaded:
       # it can contain program-committee names, which must not be persisted outside the audit.
       - uses: actions/upload-artifact@v4

@@ -30,22 +30,57 @@ router.get('/sync/status', (req, res) => {
   });
 });
 
-// POST pipeline output (used by the scheduled GitHub Action). Protected by INGEST_TOKEN.
-router.post('/ingest', async (req, res) => {
+// POST pipeline output (used by the scheduled GitHub Actions). Protected by INGEST_TOKEN.
+// Storing + auditing a full batch takes minutes, so the request only validates and queues the batch, answers
+// 202 with a job id at once, and processes in the background. Poll GET /ingest/status for the outcome.
+function checkIngestToken(req, res) {
   if (!config.ingestToken) {
-    return res.status(503).json({ success: false, error: 'Ingest endpoint disabled: INGEST_TOKEN is not configured' });
+    res.status(503).json({ success: false, error: 'Ingest endpoint disabled: INGEST_TOKEN is not configured' });
+    return false;
   }
   const given = Buffer.from(String(req.get('x-ingest-token') || ''));
   const want = Buffer.from(config.ingestToken);
   if (given.length !== want.length || !crypto.timingSafeEqual(given, want)) {
-    return res.status(401).json({ success: false, error: 'Invalid ingest token' });
+    res.status(401).json({ success: false, error: 'Invalid ingest token' });
+    return false;
   }
-  try {
-    const result = await ingestRecords(req.body);
-    res.json({ success: true, data: result });
-  } catch (err) {
-    res.status(400).json({ success: false, error: err.message });
+  return true;
+}
+
+let ingestJob = null;   // { id, state: 'running'|'done'|'failed', received, started_at, finished_at, result?, error? }
+
+router.post('/ingest', async (req, res) => {
+  if (!checkIngestToken(req, res)) return;
+  if (!Array.isArray(req.body)) {
+    return res.status(400).json({ success: false, error: 'expected an array of conference records' });
   }
+  if (ingestJob?.state === 'running') {
+    return res.status(409).json({ success: false, error: 'An ingest is already running', data: ingestJob });
+  }
+  const job = { id: crypto.randomUUID(), state: 'running', received: req.body.length, started_at: new Date().toISOString() };
+  ingestJob = job;
+  const records = req.body;
+  setImmediate(async () => {
+    try {
+      job.result = await ingestRecords(records);
+      job.state = 'done';
+    } catch (err) {
+      job.state = 'failed';
+      job.error = err.message;
+    } finally {
+      job.finished_at = new Date().toISOString();
+      console.log(`[Ingest] job ${job.id} ${job.state}: ${job.error || JSON.stringify({ ...job.result, rejected: job.result?.rejected?.length })}`);
+    }
+  });
+  res.status(202).json({ success: true, data: job });
+});
+
+// GET status of the latest ingest job
+router.get('/ingest/status', (req, res) => {
+  if (!checkIngestToken(req, res)) return;
+  if (!ingestJob) return res.json({ success: true, data: { state: 'idle' } });
+  const { result, ...rest } = ingestJob;
+  res.json({ success: true, data: { ...rest, result: result && { ...result, rejected: result.rejected?.length ?? 0 } } });
 });
 
 // POST manually trigger pipeline import + re-audit

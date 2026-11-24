@@ -242,22 +242,43 @@ ALTER TABLE public.applications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.paper_reviews ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.colleague_connections ENABLE ROW LEVEL SECURITY;
 
--- POLICIES (Allow public read for conferences, posts, audits; authenticated write)
+-- POLICIES. The backend uses the service-role key (bypasses RLS). These govern direct access with the public anon
+-- key or a user's JWT: reference data is public, everything user-owned is owner-only (migrations/008_secure_rls.sql).
 CREATE POLICY "Public conferences are viewable by everyone" ON public.conferences FOR SELECT USING (true);
 CREATE POLICY "Public audits are viewable by everyone" ON public.credibility_audits FOR SELECT USING (true);
-CREATE POLICY "Public posts are viewable by everyone" ON public.posts FOR SELECT USING (true);
-CREATE POLICY "Public comments are viewable by everyone" ON public.post_comments FOR SELECT USING (true);
-CREATE POLICY "Authenticated users can create posts" ON public.posts FOR INSERT WITH CHECK (auth.role() = 'authenticated' OR true);
-CREATE POLICY "Users can manage own applications" ON public.applications FOR ALL USING (auth.uid() = user_id OR auth.role() = 'anon');
-CREATE POLICY "Users can view and manage reviews" ON public.paper_reviews FOR ALL USING (auth.uid() = user_id OR auth.role() = 'anon');
+-- public reference data (conferences + audits keep their existing read policies)
+CREATE POLICY "deadline history is public" ON public.deadline_history FOR SELECT USING (true);
 
+-- posts: public ones to everyone; connections-only to the author and accepted connections
+CREATE POLICY "posts: read public or own or connected" ON public.posts FOR SELECT USING (
+  visibility = 'public' OR user_id = auth.uid() OR EXISTS (
+    SELECT 1 FROM public.colleague_connections c
+    WHERE c.status = 'connected'
+      AND ((c.user_id = auth.uid() AND c.target_user_id = posts.user_id)
+        OR (c.target_user_id = auth.uid() AND c.user_id = posts.user_id))));
+CREATE POLICY "posts: author writes" ON public.posts FOR ALL
+  USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
 
--- Profiles RLS policies
-CREATE POLICY "Public profiles are viewable by everyone" ON public.profiles FOR SELECT USING (true);
-CREATE POLICY "Users can insert their own profile" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id OR auth.role() = 'anon');
-CREATE POLICY "Users can update their own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id OR auth.role() = 'anon');
+CREATE POLICY "comments: read on readable posts" ON public.post_comments FOR SELECT
+  USING (EXISTS (SELECT 1 FROM public.posts p WHERE p.id = post_comments.post_id));   -- inherits the posts policy
+CREATE POLICY "comments: author writes" ON public.post_comments FOR ALL
+  USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
 
--- Connections RLS policies
-CREATE POLICY "Users can view connections" ON public.colleague_connections FOR SELECT USING (true);
-CREATE POLICY "Users can manage own connections" ON public.colleague_connections FOR ALL USING (auth.uid() = user_id OR auth.role() = 'anon');
+CREATE POLICY "likes: own" ON public.post_likes FOR ALL
+  USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+
+-- private per-user data
+CREATE POLICY "applications: owner only" ON public.applications FOR ALL
+  USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+CREATE POLICY "reviews: owner only" ON public.paper_reviews FOR ALL
+  USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+CREATE POLICY "profiles: owner only" ON public.profiles FOR ALL     -- contains email; others see profiles via the API
+  USING (id = auth.uid()) WITH CHECK (id = auth.uid());
+
+CREATE POLICY "connections: participants read" ON public.colleague_connections FOR SELECT
+  USING (user_id = auth.uid() OR target_user_id = auth.uid());
+CREATE POLICY "connections: participants write" ON public.colleague_connections FOR ALL
+  USING (user_id = auth.uid() OR target_user_id = auth.uid())
+  WITH CHECK (user_id = auth.uid() OR target_user_id = auth.uid());
+
 

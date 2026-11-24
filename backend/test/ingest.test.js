@@ -61,6 +61,20 @@ test('POST /ingest requires the token (and is disabled when unset)', async () =>
     config.ingestToken = 'secret-token';
     assert.equal((await post({})).status, 401);
     assert.equal((await post({ 'x-ingest-token': 'wrong-token!' })).status, 401);
-    assert.equal((await post({ 'x-ingest-token': 'secret-token' })).status, 200);
+    // accepted at once (202), processed in the background; status reports the finished job
+    const r = await post({ 'x-ingest-token': 'secret-token' });
+    assert.equal(r.status, 202);
+    const job = (await r.json()).data;
+    assert.equal(job.state, 'running');
+    let st;
+    for (let i = 0; i < 50; i++) {
+      await new Promise((res) => setTimeout(res, 20));
+      st = (await (await fetch(`${url}/status`, { headers: { 'x-ingest-token': 'secret-token' } })).json()).data;
+      if (st.state !== 'running') break;
+    }
+    assert.equal(st.id, job.id);
+    assert.equal(st.state, 'done');
+    assert.equal((await fetch(`${url}/status`)).status, 401);
+    assert.equal((await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json', 'x-ingest-token': 'secret-token' }, body: '{}' })).status, 400);
   } finally { server.close(); }
 });
