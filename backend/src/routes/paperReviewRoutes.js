@@ -1,6 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import { store } from '../db/store.js';
+import { getCurrentUserContext } from '../services/userContext.js';
 import { reviewResearchPaper } from '../services/llmService.js';
 
 const router = express.Router();
@@ -11,8 +12,8 @@ const upload = multer({
 // GET user's previous paper reviews
 router.get('/', async (req, res) => {
   try {
-    const { userId } = req.query;
-    const reviews = await store.getPaperReviews(userId || 'current-user');
+    const me = await getCurrentUserContext(req);
+    const reviews = await store.getPaperReviews(me.id);
     res.json({
       success: true,
       count: reviews.length,
@@ -58,7 +59,9 @@ router.post('/analyze', upload.single('paper_file'), async (req, res) => {
       fullText
     });
 
+    const me = await getCurrentUserContext(req);
     const saved = await store.savePaperReview({
+      user_id: me.id,
       title: title || 'Novel Deep Learning Framework',
       abstract: abstract || '',
       full_text: fullText,

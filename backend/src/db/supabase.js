@@ -91,5 +91,19 @@ if (isConfigured) {
 }
 
 export const getSupabase = () => supabaseClient;
+
+/** True when the backend holds the service-role key (needed for admin user operations). */
+export const hasServiceRole = () => !!(isConfigured && config.supabaseServiceKey);
+
+/**
+ * A throwaway client for password sign-in. Signing in on the shared client would attach the user's session to it,
+ * and every later query from the backend would then run as that user (under RLS) instead of with the service role.
+ */
+export function createAuthClient() {
+  if (!isConfigured) return null;
+  return createClient(config.supabaseUrl, config.supabaseAnonKey || config.supabaseServiceKey, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+  });
+}
 export const isSupabaseReady = () => isOnline;
 export const checkSupabaseHealth = () => probeSupabase(false);

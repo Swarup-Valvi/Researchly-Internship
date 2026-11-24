@@ -1,5 +1,5 @@
 import express from 'express';
-import { getSupabase, isSupabaseReady, checkSupabaseHealth } from '../db/supabase.js';
+import { getSupabase, isSupabaseReady, checkSupabaseHealth, hasServiceRole, createAuthClient } from '../db/supabase.js';
 import { store } from '../db/store.js';
 
 const router = express.Router();
@@ -17,12 +17,56 @@ function getBearerToken(req) {
   return null;
 }
 
+// No email confirmation step: accounts are created (or marked) confirmed via the service-role admin API.
+const isUnconfirmed = (err) => /not confirmed/i.test(err?.message || '');
+
+async function findAuthUserIdByEmail(email) {
+  const supabase = getSupabase();
+  const { data: p } = await supabase.from('profiles').select('id').ilike('email', email).maybeSingle();
+  if (p?.id) return p.id;
+  for (let page = 1; page <= 20; page++) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 200 });
+    if (error || !data?.users?.length) return null;
+    const u = data.users.find((x) => (x.email || '').toLowerCase() === email.toLowerCase());
+    if (u) return u.id;
+    if (data.users.length < 200) return null;
+  }
+  return null;
+}
+
+async function confirmEmail(email) {
+  if (!hasServiceRole()) return false;
+  const id = await findAuthUserIdByEmail(email);
+  if (!id) return false;
+  const { error } = await getSupabase().auth.admin.updateUserById(id, { email_confirm: true });
+  return !error;
+}
+
+/** Password sign-in on a throwaway client; auto-confirms an unconfirmed account once and retries. */
+async function passwordSignIn(email, password) {
+  const auth = createAuthClient();
+  let r = await auth.auth.signInWithPassword({ email, password });
+  if (r.error && isUnconfirmed(r.error) && await confirmEmail(email)) {
+    r = await auth.auth.signInWithPassword({ email, password });
+  }
+  return r;
+}
+
 // GET connection & Supabase status
 router.get('/status', async (req, res) => {
   const health = await checkSupabaseHealth();
+  // service_role: true only when the backend's key can really use the admin API (needed for no-confirmation sign-up
+  // and for the owner-only RLS policies of migrations/008). Reports a boolean, never the key.
+  let serviceRole = false;
+  if (hasServiceRole()) {
+    try {
+      const { error } = await getSupabase().auth.admin.listUsers({ page: 1, perPage: 1 });
+      serviceRole = !error;
+    } catch { serviceRole = false; }
+  }
   res.json({
     success: true,
-    supabase: health
+    supabase: { ...health, service_role: serviceRole }
   });
 });
 
@@ -246,22 +290,30 @@ router.post('/register', async (req, res) => {
   if (isSupabaseReady()) {
     try {
       const supabase = getSupabase();
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: full_name || 'Academic Researcher',
-            institution: institution || '',
-            role: role || 'Researcher',
-            department: department || '',
-            field_of_study: field_of_study || 'Computer Science'
+      const metadata = {
+        full_name: full_name || 'Academic Researcher',
+        institution: institution || '',
+        role: role || 'Researcher',
+        department: department || '',
+        field_of_study: field_of_study || 'Computer Science'
+      };
+      let data;
+      if (hasServiceRole()) {
+        // Create the user already confirmed: no verification email, they can sign in immediately.
+        const created = await supabase.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: metadata });
+        if (created.error) {
+          if (/already|registered|exists/i.test(created.error.message)) {
+            return res.status(400).json({ success: false, error: 'An account with this email already exists. Please sign in.' });
           }
+          return res.status(400).json({ success: false, error: created.error.message });
         }
-      });
-
-      if (error) {
-        return res.status(400).json({ success: false, error: error.message });
+        const signed = await passwordSignIn(email, password);
+        if (signed.error) return res.status(400).json({ success: false, error: signed.error.message });
+        data = { user: created.data.user, session: signed.data.session };
+      } else {
+        const r = await createAuthClient().auth.signUp({ email, password, options: { data: metadata } });
+        if (r.error) return res.status(400).json({ success: false, error: r.error.message });
+        data = r.data;
       }
 
       const userProfile = {
@@ -292,9 +344,8 @@ router.post('/register', async (req, res) => {
         updated_at: new Date().toISOString()
       };
 
-      try {
-        await supabase.from('profiles').upsert(userProfile);
-      } catch (e) {}
+      const { error: profileError } = await supabase.from('profiles').upsert(userProfile);
+      if (profileError) console.error('[Auth] profile upsert failed:', profileError.message);
 
       return res.json({
         success: true,
@@ -360,10 +411,7 @@ router.post('/login', async (req, res) => {
   if (isSupabaseReady()) {
     try {
       const supabase = getSupabase();
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
+      const { data, error } = await passwordSignIn(email, password);
 
       if (error) {
         return res.status(400).json({ success: false, error: error.message });
@@ -392,6 +440,8 @@ router.post('/login', async (req, res) => {
           interests: [],
           is_onboarded: false
         };
+        const { error: insErr } = await supabase.from('profiles').upsert(profile);
+        if (insErr) console.error('[Auth] profile create on login failed:', insErr.message);
       }
 
       return res.json({

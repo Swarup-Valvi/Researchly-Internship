@@ -124,7 +124,7 @@ export const api = {
     const res = await fetch(`${API_BASE}/posts/${postId}/like`, {
       method: 'POST',
       headers: getAuthHeaders(),
-      body: JSON.stringify({ userId: 'current-user' })
+      body: JSON.stringify({})
     });
     return res.json();
   },
@@ -206,10 +206,12 @@ export const api = {
   // --- AI Paper Peer Review ---
   async reviewPaper(payload, isFormData = false) {
     let options = { method: 'POST' };
+    const token = localStorage.getItem('researchly_token');
     if (isFormData) {
       options.body = payload;
+      if (token) options.headers = { Authorization: `Bearer ${token}` };   // browser sets the multipart Content-Type
     } else {
-      options.headers = { 'Content-Type': 'application/json' };
+      options.headers = getAuthHeaders();
       options.body = JSON.stringify(payload);
     }
     const res = await fetch(`${API_BASE}/paper-reviews/analyze`, options);

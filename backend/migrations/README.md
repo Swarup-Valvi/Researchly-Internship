@@ -1,7 +1,7 @@
 # Database migrations
 
-SQL in this folder is **never run by the app**. Apply it yourself, **in numeric order (001 through 007)**, against your
-Supabase project. A fresh install from `backend/schema.sql` already matches 001–007; the migrations are for databases
+SQL in this folder is **never run by the app**. Apply it yourself, **in numeric order (001 through 008)**, against your
+Supabase project. A fresh install from `backend/schema.sql` already matches 001–008; the migrations are for databases
 created from an older `schema.sql`.
 
 | File | What it does |
@@ -11,6 +11,7 @@ created from an older `schema.sql`.
 | `003_ccfddl_fields.sql` | Adds `conferences.dblp_key` (text), `ranking_claims` (jsonb, default `[]`), `deadline_at` (timestamptz, set only when the deadline's time zone is known) and `deadline_precision` (`datetime`/`date`). |
 | `004_location_fields.sql` | Adds `conferences.city` and `country` (text, NULL when not stated), used by the Discover page's location filter. |
 | `005_evidence.sql` | Adds `conferences.evidence` (jsonb, default `{}`): pipeline evidence for the credibility engine (quote-verified statements, risk phrases, lookup results as aggregate counts). |
+| `008_secure_rls.sql` | Replaces the permissive RLS policies (`OR auth.role() = 'anon'`, `OR true`) with owner-only policies; posts readable when public or by the author's connections. Requires `SUPABASE_SERVICE_ROLE_KEY` on the backend. |
 | `007_feed_newsletter.sql` | Adds `posts.visibility` (`public` / `connections`), `colleague_connections.updated_at`, and `profiles.newsletter_opt_in` (default false) / `newsletter_last_sent_at` for the weekly digest. |
 | `006_provisional_score.sql` | Adds `credibility_audits.provisional_score` (integer): the figure computed below the 0.30 coverage threshold, when `overall_score` is NULL. |
 
@@ -29,6 +30,7 @@ psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f backend/migrations/004_location_fi
 psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f backend/migrations/005_evidence.sql
 psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f backend/migrations/006_provisional_score.sql
 psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f backend/migrations/007_feed_newsletter.sql
+psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f backend/migrations/008_secure_rls.sql
 ```
 
 Each file runs in its own transaction and is idempotent, so a partial run can simply be repeated.

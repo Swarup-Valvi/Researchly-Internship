@@ -12,6 +12,8 @@ import { config } from '../config/env.js';
 import { filterFeed, normalizeVisibility } from '../services/feed.js';
 
 const UUID_RX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** Only real auth.users ids may be written to user_id columns (local/seed ids are not users in Supabase). */
+const isDbUser = (id) => typeof id === 'string' && UUID_RX.test(id);
 import {
   initialConferences,
   initialDeadlineHistory,
@@ -386,36 +388,52 @@ export const store = {
     return newPost;
   },
 
-  async toggleLike(postId, userId = 'usr-current') {
-    let post = posts.find(p => p.id === postId);
-    if (!post && isSupabaseReady() && UUID_RX.test(postId)) {
-      const { data } = await getSupabase().from('posts').select('*').eq('id', postId).maybeSingle();
-      if (data) { post = { ...data, likes_count: data.likes_count || 0 }; posts.push(post); }
-    }
-    if (!post) return { error: 'Post not found' };
-
-    const key = `${postId}_${userId}`;
-    const isLiked = likedPostIds.has(key);
-
-    if (isLiked) {
-      likedPostIds.delete(key);
-      post.likes_count = Math.max(0, post.likes_count - 1);
-    } else {
-      likedPostIds.add(key);
-      post.likes_count += 1;
-    }
-
-    if (isSupabaseReady()) {
+  async toggleLike(postId, userId = null) {
+    if (!userId) return { error: 'Sign in to like posts' };
+    if (isSupabaseReady() && UUID_RX.test(postId) && isDbUser(userId)) {
       try {
         const supabase = getSupabase();
-        const { error } = await supabase.from('posts').update({ likes_count: post.likes_count }).eq('id', postId);
-        if (error) logSupabaseError('posts', 'update', error);
+        const { data: existing } = await supabase.from('post_likes').select('id').eq('post_id', postId).eq('user_id', userId).maybeSingle();
+        const op = existing
+          ? supabase.from('post_likes').delete().eq('id', existing.id)
+          : supabase.from('post_likes').insert({ post_id: postId, user_id: userId });
+        const { error } = await op;
+        if (error) throw error;
+        const { count } = await supabase.from('post_likes').select('id', { count: 'exact', head: true }).eq('post_id', postId);
+        const likes = count || 0;
+        await supabase.from('posts').update({ likes_count: likes }).eq('id', postId);
+        const local = posts.find(p => p.id === postId);
+        if (local) local.likes_count = likes;
+        return { likes_count: likes, isLiked: !existing };
       } catch (err) {
-        logSupabaseError('posts', 'toggleLike', err);
+        logSupabaseError('post_likes', 'toggleLike', err);
       }
     }
 
+    // local fallback
+    const post = posts.find(p => p.id === postId);
+    if (!post) return { error: 'Post not found' };
+    const key = `${postId}_${userId}`;
+    const isLiked = likedPostIds.has(key);
+    if (isLiked) {
+      likedPostIds.delete(key);
+      post.likes_count = Math.max(0, (post.likes_count || 0) - 1);
+    } else {
+      likedPostIds.add(key);
+      post.likes_count = (post.likes_count || 0) + 1;
+    }
     return { likes_count: post.likes_count, isLiked: !isLiked };
+  },
+
+  /** Post ids this user has liked (so the feed can show the liked state after a reload). */
+  async getLikedPostIds(userId) {
+    const ids = new Set([...likedPostIds].filter(k => k.endsWith(`_${userId}`)).map(k => k.slice(0, -(`_${userId}`).length)));
+    if (isSupabaseReady() && isDbUser(userId)) {
+      const { data, error } = await getSupabase().from('post_likes').select('post_id').eq('user_id', userId);
+      if (error) logSupabaseError('post_likes', 'select', error);
+      (data || []).forEach(r => ids.add(r.post_id));
+    }
+    return ids;
   },
 
   async getComments(postId) {
@@ -439,12 +457,12 @@ export const store = {
 
   async addComment(commentData) {
     const newComment = {
-      id: commentData.id || `c-${crypto.randomUUID()}`,
+      id: crypto.randomUUID(),
       post_id: commentData.post_id,
-      user_id: commentData.user_id || 'usr-current',
-      author_name: commentData.author_name || 'Dr. Alex Morgan',
-      author_institution: commentData.author_institution || 'Research Institute',
-      author_avatar: commentData.author_avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+      user_id: commentData.user_id || null,
+      author_name: commentData.author_name || 'Academic Researcher',
+      author_institution: commentData.author_institution || '',
+      author_avatar: commentData.author_avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(commentData.author_name || 'Researcher')}&background=4f46e5&color=fff`,
       content: commentData.content,
       created_at: new Date().toISOString()
     };
@@ -452,8 +470,13 @@ export const store = {
     if (isSupabaseReady()) {
       try {
         const supabase = getSupabase();
-        const { error } = await supabase.from('post_comments').insert(newComment);
-        if (error) logSupabaseError('post_comments', 'insert', error);
+        if (UUID_RX.test(newComment.post_id || '')) {
+          const row = isDbUser(newComment.user_id) ? newComment : { ...newComment, user_id: null };
+          const { error } = await supabase.from('post_comments').insert(row);
+          if (error) logSupabaseError('post_comments', 'insert', error);
+          const { count } = await supabase.from('post_comments').select('id', { count: 'exact', head: true }).eq('post_id', newComment.post_id);
+          if (typeof count === 'number') await supabase.from('posts').update({ comments_count: count }).eq('id', newComment.post_id);
+        }
       } catch (err) {
         logSupabaseError('post_comments', 'addComment', err);
       }
@@ -470,28 +493,28 @@ export const store = {
   },
 
   // --- Applications Tracker (Kanban) ---
-  async getApplications(userId = 'current-user') {
-    if (isSupabaseReady()) {
+  async getApplications(userId = null) {
+    if (!userId) return [];
+    if (isSupabaseReady() && isDbUser(userId)) {
       try {
-        const supabase = getSupabase();
-        const { data, error } = await supabase
+        const { data, error } = await getSupabase()
           .from('applications')
           .select('*')
+          .eq('user_id', userId)
           .order('updated_at', { ascending: false });
         if (error) logSupabaseError('applications', 'select', error);
-        if (!error && data && data.length > 0) return data;
+        if (!error && data) return data;
       } catch (err) {
         logSupabaseError('applications', 'getApplications', err);
       }
     }
-
-    return [...applications];
+    return applications.filter(a => a.user_id === userId);
   },
 
   async createApplication(appData) {
     const newApp = {
-      id: appData.id || `app-${crypto.randomUUID()}`,
-      user_id: appData.user_id || 'current-user',
+      id: crypto.randomUUID(),
+      user_id: appData.user_id,
       conference_id: appData.conference_id || null,
       conference_name: appData.conference_name || 'Target Conference',
       paper_title: appData.paper_title || 'Untitled Research Draft',
@@ -506,9 +529,16 @@ export const store = {
 
     if (isSupabaseReady()) {
       try {
-        const supabase = getSupabase();
-        const { error } = await supabase.from('applications').insert(newApp);
-        if (error) logSupabaseError('applications', 'insert', error);
+        if (isDbUser(newApp.user_id)) {
+          // conference_id is a FK: keep it only if that conference row exists
+          let row = newApp;
+          if (row.conference_id) {
+            const { data: c } = await getSupabase().from('conferences').select('id').eq('id', row.conference_id).maybeSingle();
+            if (!c) row = { ...row, conference_id: null };
+          }
+          const { error } = await getSupabase().from('applications').insert(row);
+          if (error) logSupabaseError('applications', 'insert', error);
+        }
       } catch (err) {
         logSupabaseError('applications', 'createApplication', err);
       }
@@ -518,71 +548,59 @@ export const store = {
     return newApp;
   },
 
-  async updateApplication(id, updates) {
-    const idx = applications.findIndex(a => a.id === id);
-    if (idx === -1) return null;
+  async updateApplication(id, updates, userId = null) {
+    const allowed = ['conference_id', 'conference_name', 'paper_title', 'abstract', 'status', 'target_deadline', 'co_authors', 'notes'];
+    const patch = Object.fromEntries(Object.entries(updates || {}).filter(([k]) => allowed.includes(k)));
+    patch.updated_at = new Date().toISOString();
 
-    applications[idx] = {
-      ...applications[idx],
-      ...updates,
-      updated_at: new Date().toISOString()
-    };
-
-    if (isSupabaseReady()) {
-      try {
-        const supabase = getSupabase();
-        const { error } = await supabase.from('applications').update(applications[idx]).eq('id', id);
-        if (error) logSupabaseError('applications', 'update', error);
-      } catch (err) {
-        logSupabaseError('applications', 'updateApplication', err);
-      }
+    if (isSupabaseReady() && isDbUser(userId) && UUID_RX.test(id)) {
+      const { data, error } = await getSupabase().from('applications').update(patch)
+        .eq('id', id).eq('user_id', userId).select().maybeSingle();
+      if (error) logSupabaseError('applications', 'update', error);
+      if (data) return data;
     }
-
+    const idx = applications.findIndex(a => a.id === id && a.user_id === userId);
+    if (idx === -1) return null;
+    applications[idx] = { ...applications[idx], ...patch };
     return applications[idx];
   },
 
-  async deleteApplication(id) {
-    const idx = applications.findIndex(a => a.id === id);
-    if (idx === -1) return false;
-
-    applications.splice(idx, 1);
-
-    if (isSupabaseReady()) {
-      try {
-        const supabase = getSupabase();
-        const { error } = await supabase.from('applications').delete().eq('id', id);
-        if (error) logSupabaseError('applications', 'delete', error);
-      } catch (err) {
-        logSupabaseError('applications', 'deleteApplication', err);
-      }
+  async deleteApplication(id, userId = null) {
+    if (isSupabaseReady() && isDbUser(userId) && UUID_RX.test(id)) {
+      const { data, error } = await getSupabase().from('applications').delete()
+        .eq('id', id).eq('user_id', userId).select('id');
+      if (error) logSupabaseError('applications', 'delete', error);
+      if (data?.length) return true;
     }
-
+    const idx = applications.findIndex(a => a.id === id && a.user_id === userId);
+    if (idx === -1) return false;
+    applications.splice(idx, 1);
     return true;
   },
 
   // --- Paper Reviews ---
-  async getPaperReviews(userId = 'current-user') {
-    if (isSupabaseReady()) {
+  async getPaperReviews(userId = null) {
+    if (!userId) return [];
+    if (isSupabaseReady() && isDbUser(userId)) {
       try {
-        const supabase = getSupabase();
-        const { data, error } = await supabase
+        const { data, error } = await getSupabase()
           .from('paper_reviews')
           .select('*')
+          .eq('user_id', userId)
           .order('created_at', { ascending: false });
         if (error) logSupabaseError('paper_reviews', 'select', error);
-        if (!error && data && data.length > 0) return data;
+        if (!error && data) return data;
       } catch (err) {
         logSupabaseError('paper_reviews', 'getPaperReviews', err);
       }
     }
-
-    return [...paperReviews];
+    return paperReviews.filter(r => r.user_id === userId);
   },
 
   async savePaperReview(review) {
     const newReview = {
-      id: review.id || `rev-${crypto.randomUUID()}`,
-      user_id: review.user_id || 'current-user',
+      id: crypto.randomUUID(),
+      user_id: review.user_id || null,
       title: review.title,
       abstract: review.abstract,
       full_text: review.full_text || '',
@@ -601,7 +619,9 @@ export const store = {
     if (isSupabaseReady()) {
       try {
         const supabase = getSupabase();
-        const { error } = await supabase.from('paper_reviews').insert(newReview);
+        const { error } = isDbUser(newReview.user_id)
+          ? await supabase.from('paper_reviews').insert(newReview)
+          : { error: null };                                  // guests: not stored in the database
         if (error) logSupabaseError('paper_reviews', 'insert', error);
       } catch (err) {
         logSupabaseError('paper_reviews', 'savePaperReview', err);

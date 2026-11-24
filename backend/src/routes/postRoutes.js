@@ -12,6 +12,10 @@ router.get('/', async (req, res) => {
     const scope = req.query.scope === 'connections' ? 'connections' : 'all';
     const viewer = await getCurrentUserContext(req);
     const posts = await store.getPosts({ viewerId: viewer.id, scope });
+    if (viewer.id) {
+      const liked = await store.getLikedPostIds(viewer.id);
+      posts.forEach((p) => { p.is_liked = liked.has(p.id); });
+    }
     res.json({
       success: true,
       scope,
@@ -60,8 +64,9 @@ router.post('/', async (req, res) => {
 // POST toggle like on post
 router.post('/:id/like', async (req, res) => {
   try {
-    const { userId } = req.body;
-    const result = await store.toggleLike(req.params.id, userId);
+    const me = await getCurrentUserContext(req);
+    if (!me.id) return res.status(401).json({ success: false, error: 'Sign in to like posts.' });
+    const result = await store.toggleLike(req.params.id, me.id);
     if (result.error) {
       return res.status(404).json({ success: false, error: result.error });
     }
@@ -91,7 +96,9 @@ router.get('/:id/comments', async (req, res) => {
 // POST add comment
 router.post('/:id/comments', async (req, res) => {
   try {
-    const { content, author_name, author_institution, author_avatar, userId } = req.body;
+    const { content, author_name, author_institution, author_avatar } = req.body;
+    const me = await getCurrentUserContext(req);
+    if (!me.id) return res.status(401).json({ success: false, error: 'Sign in to comment.' });
     if (!content || !content.trim()) {
       return res.status(400).json({ success: false, error: 'Comment content cannot be empty' });
     }
@@ -102,7 +109,7 @@ router.post('/:id/comments', async (req, res) => {
       author_name,
       author_institution,
       author_avatar,
-      user_id: userId
+      user_id: me.id
     });
 
     res.status(201).json({
